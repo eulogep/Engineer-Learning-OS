@@ -1,18 +1,10 @@
-import { runControlledLegacyProvider, validateControlledPilotPlan } from "@/modules/notebooklm/server-runner";
-import type { LegacyNotebookLMOperation } from "@/modules/notebooklm/legacy-provider";
+import { handleNotebookLMExecute } from "@/modules/notebooklm/execute-handler";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Local-only bridge, disabled unless ELOS_NOTEBOOKLM_AUTOMATION=ENABLED is set on the server
+// (see src/modules/notebooklm/automation-gate.ts). Only POST is exposed.
 export async function POST(request: Request) {
-  try {
-    const body = await request.json() as { plan?: unknown; operation?: LegacyNotebookLMOperation };
-    const plan = validateControlledPilotPlan(body.plan);
-    const result = await runControlledLegacyProvider(plan, body.operation ?? "EXECUTE");
-    const status = !Array.isArray(result) && result.status === "HUMAN_LOGIN_REQUIRED" ? 401 : 200;
-    return Response.json(result, { status });
-  } catch (error) {
-    const detailCode = error instanceof Error ? error.message : "CONTROLLED_EXECUTION_REJECTED";
-    return Response.json({ status: "AUTOMATION_FAILED", detailCode }, { status: 400 });
-  }
+  return handleNotebookLMExecute(request);
 }

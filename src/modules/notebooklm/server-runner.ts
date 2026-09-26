@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessByStdio, type SpawnOptionsWithStdioTuple, type StdioPipe } from "node:child_process";
+import type { Readable, Writable } from "node:stream";
 import { access, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { approveNotebookLMTask } from "./core";
+import { isNotebookLMAutomationEnabled } from "./automation-gate";
 import { NotebookLMGuard } from "./guard";
 import { LegacyNotebookLMSkillProvider, type LegacyNotebookLMOperation } from "./legacy-provider";
 import { createPilotTransferManifest, networkingNotebookLMBundle, notebookLMPilotSources, notebookLMPilotTasks, notebookLMPromptHashes } from "./pilot-registry";
@@ -45,8 +47,8 @@ export function validateControlledPilotPlan(candidate: unknown): NotebookLMAutom
   return expected;
 }
 
-export async function verifyControlledManifest(plan: NotebookLMAutomationPlan) {
-  const workspace = path.resolve(/*turbopackIgnore: true*/ process.cwd());
+export async function verifyControlledManifest(plan: NotebookLMAutomationPlan, workspaceRoot: string = process.cwd()) {
+  const workspace = path.resolve(/*turbopackIgnore: true*/ workspaceRoot);
   for (const file of plan.manifest.files) {
     const absolute = path.resolve(/*turbopackIgnore: true*/ workspace, file.relativePath);
     if (absolute !== workspace && !absolute.startsWith(`${workspace}${path.sep}`)) throw new Error("MANIFEST_PATH_OUTSIDE_WORKSPACE");
@@ -71,19 +73,39 @@ function parseProviderOutput(output: string): NotebookLMProviderResult | Noteboo
   }
 }
 
-export async function runControlledLegacyProvider(plan: NotebookLMAutomationPlan, operation: LegacyNotebookLMOperation) {
+type SpawnPiped = (command: string, args: readonly string[], options: SpawnOptionsWithStdioTuple<StdioPipe, StdioPipe, StdioPipe>) => ChildProcessByStdio<Writable, Readable, Readable>;
+
+export type ControlledRunnerDeps = {
+  spawn: SpawnPiped;
+  access: typeof access;
+  verifyManifest: typeof verifyControlledManifest;
+  env: NodeJS.ProcessEnv;
+  cwd: string;
+};
+
+/**
+ * Runs one allowlisted operation through the local automation script.
+ *
+ * The executable and the script are fixed paths under the workspace; the only caller-supplied value
+ * that reaches `spawn` is an operation name from a closed allowlist, passed as an argument (no shell).
+ * Dependencies are injectable so the guarantees can be tested without starting a process.
+ */
+export async function runControlledLegacyProvider(plan: NotebookLMAutomationPlan, operation: LegacyNotebookLMOperation, overrides: Partial<ControlledRunnerDeps> = {}) {
+  const deps: ControlledRunnerDeps = { spawn, access, verifyManifest: verifyControlledManifest, env: process.env, cwd: process.cwd(), ...overrides };
+  // Defence in depth: the route already refuses when disabled, but the runner must never spawn on its own.
+  if (!isNotebookLMAutomationEnabled(deps.env)) throw new Error("AUTOMATION_DISABLED");
   if (!allowedOperations.has(operation)) return { status: "AUTOMATION_FAILED", detailCode: "OPERATION_BLOCKED" } satisfies NotebookLMProviderResult;
-  await verifyControlledManifest(plan);
-  const workspace = path.resolve(/*turbopackIgnore: true*/ process.cwd());
+  await deps.verifyManifest(plan, deps.cwd);
+  const workspace = path.resolve(/*turbopackIgnore: true*/ deps.cwd);
   const python = path.join(workspace, "skill notebooklm", ".venv", "Scripts", "python.exe");
   const script = path.join(workspace, "skill notebooklm", "scripts", "elos_automation.py");
-  await Promise.all([access(python), access(script)]);
+  await Promise.all([deps.access(python), deps.access(script)]);
   const sessionRoot = path.join(workspace, ".local", "notebooklm-session");
 
   return await new Promise<NotebookLMProviderResult | NotebookLMProviderResult[]>((resolve) => {
-    const child = spawn(python, [script, "--operation", operation], {
+    const child = deps.spawn(python, [script, "--operation", operation], {
       cwd: workspace,
-      env: { ...process.env, PYTHONUTF8: "1", NOTEBOOKLM_SESSION_ROOT: sessionRoot, ELOS_WORKSPACE_ROOT: workspace },
+      env: { ...deps.env, PYTHONUTF8: "1", NOTEBOOKLM_SESSION_ROOT: sessionRoot, ELOS_WORKSPACE_ROOT: workspace },
       windowsHide: false,
       stdio: ["pipe", "pipe", "pipe"],
     });

@@ -198,6 +198,7 @@ src/modules/
 ## 🛡️ Privacy, Security & Data Safety
 
 - 🔒 **Bounded data flow:** Proprietary documents, internal spreadsheets, private audio, and credentials stay outside Git and remote sync; only metadata classified `SYNC_ALLOWED` can enter the guarded outbox.
+- 🧱 **Local automation is opt-in:** the NotebookLM browser-automation bridge (`POST /api/notebooklm/execute`) answers `404` and starts nothing unless `ELOS_NOTEBOOKLM_AUTOMATION=ENABLED` is set in the **server** environment. Even then it only accepts same-origin JSON requests addressed to `localhost`, and it refuses hosted platforms and proxied requests. Never enable it on a deployed instance.
 - 🧪 **Synthetic Fixtures Only:** All automated tests use 100% synthetic, non-sensitive fixtures (`TRAINING_SYNTHETIC`).
 - 🌐 **Offline by Default:** Document extraction, audio recording, quiz grading, and competency derivation run entirely on your local machine without mandatory network calls.
 
