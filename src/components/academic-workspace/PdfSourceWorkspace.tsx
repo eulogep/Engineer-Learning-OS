@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BookOpen, FileText, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, FileText, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +48,7 @@ export function PdfSourceWorkspace() {
       <ul className="space-y-3 text-sm leading-6 text-slate-700">{section.summary.map((item) => <li className="flex gap-2" key={item}><ShieldCheck className="mt-1 size-4 shrink-0 text-emerald-700" />{item}</li>)}</ul>
       <div><p className="text-sm font-semibold">Concepts reliés</p><div className="mt-2 flex flex-wrap gap-2">{concepts.map((concept) => <Badge key={concept.id} variant="outline">{concept.label}</Badge>)}</div></div>
       <p className="rounded-xl bg-slate-50 p-3 text-sm"><strong>Provenance :</strong> {section.sourceReference}</p>
-      <div className="flex flex-wrap items-center gap-3"><Button variant="outline" disabled={index === 0} onClick={() => setIndex((value) => value - 1)}><ArrowLeft />Section précédente</Button><Button variant="outline" disabled={index === networkingPdfSections.length - 1} onClick={() => setIndex((value) => value + 1)}>Section suivante <ArrowRight /></Button>{sectionQuiz && sectionQuiz.sectionCoverage !== "INSUFFICIENT" ? <Button asChild><a href="#pdf-quiz">Quiz cette section</a></Button> : <Button disabled>Quiz indisponible</Button>}<Badge variant="outline">Couverture : {sectionQuiz?.sectionCoverage ?? "INSUFFICIENT"}</Badge><Button variant="outline" disabled>Deep Mastery — futur</Button><Button variant="outline" disabled>Ajouter à Review après une erreur réelle</Button></div>
+      <div className="flex flex-wrap items-center gap-3"><Button variant="outline" disabled={index === 0} onClick={() => setIndex((value) => value - 1)}><ArrowLeft />Section précédente</Button><Button variant="outline" disabled={index === networkingPdfSections.length - 1} onClick={() => setIndex((value) => value + 1)}>Section suivante <ArrowRight /></Button>{sectionQuiz && sectionQuiz.sectionCoverage !== "INSUFFICIENT" ? <Button asChild><a href="#pdf-quiz">Quiz cette section</a></Button> : <Button disabled>Quiz indisponible</Button>}<Badge variant="outline">Couverture : {sectionQuiz?.sectionCoverage ?? "INSUFFICIENT"}</Badge><Button variant="outline" asChild><Link href="/notebooklm"><Sparkles />Support NotebookLM contrôlé</Link></Button><Button variant="outline" disabled>Deep Mastery — futur</Button><Button variant="outline" disabled>Ajouter à Review après une erreur réelle</Button></div>
       {(!sectionQuiz || sectionQuiz.sectionCoverage === "INSUFFICIENT") && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Cette section ne contient pas encore assez de contenu vérifié pour créer un quiz fiable.</p>}
       <p className="text-xs text-slate-500">Aucune révision n’est créée artificiellement : Review reste alimenté par les erreurs observées dans le quiz.</p>
     </CardContent></Card>

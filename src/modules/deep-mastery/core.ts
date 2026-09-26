@@ -5,6 +5,7 @@ import type {
   DeepMasteryQuestion,
   DeepMasteryStep,
 } from "./types";
+import { evaluateInvariantExplanation } from "../scientific-pedagogy/core";
 
 const normalize = (value: string) => value
   .normalize("NFD")
@@ -67,9 +68,11 @@ export function evaluateDeepMasteryQuestion(question: DeepMasteryQuestion, respo
   if (question.type === "MULTIPLE_CHOICE") {
     correct = answer === normalize(question.correctChoiceId ?? "");
   } else {
-    const groups = question.expectedConceptGroups ?? [];
-    const conceptsCovered = groups.every((group) => group.some((term) => answer.includes(normalize(term))));
-    correct = response.trim().length >= (question.minLength ?? 1) && conceptsCovered;
+    correct = evaluateInvariantExplanation(
+      response,
+      question.expectedConceptGroups ?? [],
+      question.minLength ?? 1,
+    ).valid;
   }
   return { correct, message: correct ? question.successFeedback : question.retryFeedback, attemptNumber };
 }

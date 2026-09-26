@@ -1,6 +1,34 @@
 import type { CompetencyId } from "../learning-records/types";
 import type { DataClassification, SourceRecord } from "../source-engine/types";
 
+export type AcademicSourceIndexStatus = "CURRENT_PRIMARY" | "CURRENT_SECONDARY" | "PROGRAM_ONLY" | "HISTORICAL_REFERENCE" | "UNVERIFIED";
+export type AcademicSourceIndexEntry = Readonly<{
+  id: string;
+  course: string;
+  type: string;
+  path: string;
+  academicYear?: string;
+  status: AcademicSourceIndexStatus;
+  canonical: boolean;
+  provenanceRole: "ORIGINAL_SOURCE";
+  dataClassification: DataClassification;
+  repositoryVisibility: "TRACKED" | "LOCAL_ONLY";
+  sha256: string;
+  notes?: string;
+}>;
+export type AcademicSourceIndex = Readonly<{
+  schemaVersion: 1;
+  generatedAt: string;
+  provenancePolicy: Readonly<{
+    originalSourceRole: "ORIGINAL_SOURCE";
+    derivedArtifactRole: "DERIVED";
+    derivedDirectory: "knowledge/.derived";
+    masteryFromSourcePresence: false;
+  }>;
+  sources: readonly AcademicSourceIndexEntry[];
+  missingButKnownInChatGPT: readonly string[];
+}>;
+
 export type SubjectRecord = {
   id: string;
   slug: string;

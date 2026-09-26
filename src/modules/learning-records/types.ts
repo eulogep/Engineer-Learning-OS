@@ -9,6 +9,7 @@ export const COMPETENCY_STATUSES = [
 
 export type CompetencyStatus = (typeof COMPETENCY_STATUSES)[number];
 export type CompetencyId =
+  | "DAILY_ENGLISH_GUIDED_PRACTICE"
   | "EXCEL_CSV_IMPORT"
   | "TECHNICAL_ENGLISH_EXPLANATION"
   | "DATA_ANOMALY_IDENTIFICATION"
@@ -141,4 +142,10 @@ export type LearningRecordEvent = {
   at: number;
   evidenceId?: string;
   competencyId?: CompetencyId;
+};
+
+export type EvidenceDeletionRecord = {
+  id: string;
+  evidenceId: string;
+  requestedAt: number;
 };

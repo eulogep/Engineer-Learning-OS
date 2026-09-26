@@ -4,11 +4,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { MissionAttempt, MissionDefinition } from "@/modules/mission-runtime/types";
 import { rebuildCompetencies, reconcileExcelAttempt, upsertEvidence } from "./core";
-import type { CompetencyId, CompetencyRecord, EvidenceRecord, LearningRecordEvent, LearningRecordEventType } from "./types";
+import type { CompetencyId, CompetencyRecord, EvidenceDeletionRecord, EvidenceRecord, LearningRecordEvent, LearningRecordEventType } from "./types";
 
 type LearningRecordState = {
   hydrated: boolean;
   evidence: EvidenceRecord[];
+  deletions: EvidenceDeletionRecord[];
   competencies: CompetencyRecord[];
   events: LearningRecordEvent[];
   markHydrated: () => void;
@@ -29,6 +30,7 @@ export const useLearningRecordStore = create<LearningRecordState>()(
     (set) => ({
       hydrated: false,
       evidence: [],
+      deletions: [],
       competencies: [],
       events: [],
       markHydrated: () => set({ hydrated: true }),
@@ -69,8 +71,18 @@ export const useLearningRecordStore = create<LearningRecordState>()(
         };
       }),
       removeEvidence: (evidenceId) => set((state) => {
+        if (!state.evidence.some((record) => record.id === evidenceId)) return state;
+        const requestedAt = Date.now();
         const evidence = state.evidence.filter((record) => record.id !== evidenceId);
-        return { evidence, competencies: rebuildCompetencies(evidence) };
+        return {
+          evidence,
+          competencies: rebuildCompetencies(evidence),
+          deletions: [...state.deletions, {
+            id: "evidence-deletion:" + evidenceId + ":" + requestedAt + ":" + globalThis.crypto.randomUUID(),
+            evidenceId,
+            requestedAt,
+          }],
+        };
       }),
       recordEvidenceViewed: (evidenceId) => set((state) => ({ events: [...state.events, event("EVIDENCE_VIEWED", { evidenceId })] })),
       recordCompetencyExplanationViewed: (competencyId) => set((state) => ({ events: [...state.events, event("COMPETENCY_EXPLANATION_VIEWED", { competencyId })] })),
@@ -78,7 +90,7 @@ export const useLearningRecordStore = create<LearningRecordState>()(
     {
       name: "engineer-learning-os:learning-records:v1",
       skipHydration: true,
-      partialize: ({ evidence, competencies, events }) => ({ evidence, competencies, events }),
+      partialize: ({ evidence, deletions, competencies, events }) => ({ evidence, deletions, competencies, events }),
     },
   ),
 );

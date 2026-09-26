@@ -35,6 +35,8 @@ type RuntimeState = {
   reset: (mission: MissionDefinition) => void;
 };
 
+const NASA_MISSION_RUNTIME_NAMESPACE = "engineer-learning-os:mission-runtime:v2";
+
 const nowEvent = (type: MissionEvent["type"], stepId?: string, value?: number, at = Date.now()): MissionEvent => ({ type, at, stepId, value });
 
 function currentAttempt(state: RuntimeState, mission: MissionDefinition) {
@@ -200,7 +202,7 @@ export const useMissionRuntimeStore = create<RuntimeState>()(
       })),
     }),
     {
-      name: "engineer-learning-os:mission-runtime:v2",
+      name: NASA_MISSION_RUNTIME_NAMESPACE,
       skipHydration: true,
       partialize: ({ attempts, drafts }) => ({ attempts, drafts }),
     },
