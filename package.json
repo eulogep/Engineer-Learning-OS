@@ -24,13 +24,15 @@
     "build": "next build && node scripts/post-build-standalone.mjs",
     "start": "cd .next/standalone && NODE_ENV=production node server.js 2>&1 | tee ../../server.log",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types --import ./tests/register-loader.mjs \"tests/unit/**/*.test.ts\" \"tests/integration/**/*.test.ts\" \"tests/integration/**/*.test.cjs\"",
     "validate:v1:local": "node scripts/validate-v1-local.mjs",
     "db:push": "prisma db push",
     "db:setup:local": "node scripts/setup-local-db.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "validate:v1:hosted": "node --experimental-strip-types --loader ./tests/unit/learning-history/node-loader.mjs scripts/validate-supabase-hosted.ts"
+    "validate:v1:hosted": "node --experimental-strip-types --import ./tests/register-loader.mjs scripts/validate-supabase-hosted.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -112,5 +114,8 @@
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

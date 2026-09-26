@@ -161,8 +161,9 @@ test("incomplete technical response creates conservative error memory but no pre
 test("rebuilding the expanded competency map preserves Technical English without inventing professional or academic progress", () => {
   const technicalEvidence = technicalEnglishEvidenceFromAttempt(completedAttempt());
   const competencies = rebuildCompetencies([technicalEvidence]);
-  assert.equal(competencies.length, 8);
+  assert.equal(competencies.length, 9);
   assert.equal(competencies.find((item: { competencyId: string }) => item.competencyId === "TECHNICAL_ENGLISH_EXPLANATION").status, "PRACTICED");
+  assert.equal(competencies.find((item: { competencyId: string }) => item.competencyId === "DAILY_ENGLISH_GUIDED_PRACTICE").status, "NOT_SEEN");
   assert.equal(competencies.find((item: { competencyId: string }) => item.competencyId === "DATA_ANOMALY_IDENTIFICATION").status, "NOT_SEEN");
   assert.equal(competencies.find((item: { competencyId: string }) => item.competencyId === "NETWORK_FUNDAMENTALS").status, "NOT_SEEN");
 });
