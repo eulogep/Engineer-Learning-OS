@@ -5,6 +5,8 @@ import { RuntimeResumeCard } from "@/components/mission-runtime/RuntimeResumeCar
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TodayReviewCard } from "@/components/review-engine/TodayReviewCard";
+import { PedagogicalNextActionCard } from "@/components/scientific-pedagogy/PedagogicalPolicyCards";
+import { SemesterTodayCard } from "@/components/current-semester/CurrentSemesterViews";
 
 export default function TodayPage() {
   const today = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
@@ -17,6 +19,7 @@ export default function TodayPage() {
           Avancez sur le blocage le plus important, une étape à la fois.
         </h1>
       </section>
+      <SemesterTodayCard />
       <TodayMissionCard />
       <RuntimeResumeCard />
       <section aria-label="Continuer et réviser" className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
@@ -32,6 +35,7 @@ export default function TodayPage() {
         </Card>
         <TodayReviewCard />
       </section>
+      <PedagogicalNextActionCard />
       <Card className="overflow-hidden border-slate-200/80 bg-slate-950 text-white shadow-sm">
         <CardContent className="grid gap-6 p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
           <div className="space-y-3">

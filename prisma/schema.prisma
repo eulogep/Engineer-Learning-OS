@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Word {
+  id              String   @id @default(cuid())
+  word            String
+  translation     String
+  category        String   @default("general")
+  personalSentence String? // personal_sentence in DB
+  mentalImage     String?  // mental_image in DB
+  emotion         String?
+  status          String   @default("nouveau") // nouveau | actif | maitrise
+  nextReviewDate  DateTime? // next_review_date in DB
+  lastUsedAt      DateTime? // last time this word was picked for a daily mission — drives rotation
+  createdAt       DateTime @default(now()) // created_at in DB
+}
+
+model SpeakingSession {
+  id              String   @id @default(cuid())
+  date            DateTime @default(now())
+  audioUrl        String?  // audio_url in DB
+  transcription   String?  // raw transcription text
+  correctedText   String?  // corrected_text in DB
+  feedback        String?  // JSON string: explanation of 2-3 key errors
+  repeated        Boolean  @default(false)
+  durationSeconds Int?     // duration_seconds in DB — duration of the ORIGINAL recording (ticket 4)
+  repeatDurationSeconds Int? // duration of the repeat/2nd recording (ticket 6) — kept separate so DoneStep stats don't get overwritten
+  wordsUsedJson   String?  // JSON array of word ids used
+  createdAt       DateTime @default(now()) // created_at in DB
+}
+
+model DailyMission {
+  id                   String   @id @default(cuid())
+  date                 DateTime @default(now())
+  wordIdsJson          String   // JSON array of word IDs
+  personalSentencesJson String  // JSON object: { wordId: sentence }
+  speakingSessionId    String?  // FK to SpeakingSession
+  completed            Boolean  @default(false)
+  createdAt            DateTime @default(now()) // created_at in DB
+}

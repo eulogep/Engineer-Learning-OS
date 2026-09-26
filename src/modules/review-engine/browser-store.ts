@@ -10,6 +10,7 @@ type ReviewFeedback = { correct: boolean; message: string };
 
 type ReviewEngineState = {
   hydrated: boolean;
+  errorSignals: ErrorSignal[];
   errorPatterns: ErrorPattern[];
   reviewItems: ReviewItem[];
   results: ReviewResultRecord[];
@@ -37,10 +38,23 @@ function event(type: ReviewEventType, fields: Partial<ReviewEvent> = {}, at = Da
   return { id: `${type}:${at}:${globalThis.crypto.randomUUID()}`, type, at, ...fields };
 }
 
+function mergeErrorSignalJournal(current: ErrorSignal[], incoming: ErrorSignal[]): ErrorSignal[] {
+  const merged = new Map(current.map((signal) => [signal.id, signal]));
+  for (const signal of incoming) {
+    const prior = merged.get(signal.id);
+    if (prior && JSON.stringify(prior) !== JSON.stringify(signal)) {
+      throw new Error("Conflicting error signal identity.");
+    }
+    merged.set(signal.id, signal);
+  }
+  return [...merged.values()];
+}
+
 export const useReviewEngineStore = create<ReviewEngineState>()(
   persist(
     (set, get) => ({
       hydrated: false,
+      errorSignals: [],
       errorPatterns: [],
       reviewItems: [],
       results: [],
@@ -55,13 +69,17 @@ export const useReviewEngineStore = create<ReviewEngineState>()(
       syncExcelAttempt: (attempt, evidenceIds, at = Date.now()) => set((state) => {
         const signals = detectExcelErrorSignals(attempt, evidenceIds);
         if (signals.length === 0) return state;
+        const errorSignals = mergeErrorSignalJournal(state.errorSignals, signals);
         const patterns = mergeErrorPatterns(state.errorPatterns, signals);
         const items = generateReviewItems(state.reviewItems, patterns, at);
-        if (JSON.stringify(patterns) === JSON.stringify(state.errorPatterns) && JSON.stringify(items) === JSON.stringify(state.reviewItems)) return state;
+        if (JSON.stringify(errorSignals) === JSON.stringify(state.errorSignals)
+          && JSON.stringify(patterns) === JSON.stringify(state.errorPatterns)
+          && JSON.stringify(items) === JSON.stringify(state.reviewItems)) return state;
         const oldPatternIds = new Set(state.errorPatterns.map((pattern) => pattern.id));
         const oldItemIds = new Set(state.reviewItems.map((item) => item.id));
         const changedPatterns = patterns.filter((pattern) => JSON.stringify(pattern) !== JSON.stringify(state.errorPatterns.find((prior) => prior.id === pattern.id)));
         return {
+          errorSignals,
           errorPatterns: patterns,
           reviewItems: items,
           events: [
@@ -73,24 +91,31 @@ export const useReviewEngineStore = create<ReviewEngineState>()(
       }),
       addErrorSignals: (signals, at = Date.now()) => set((state) => {
         if (signals.length === 0) return state;
+        const errorSignals = mergeErrorSignalJournal(state.errorSignals, signals);
         const patterns = mergeErrorPatterns(state.errorPatterns, signals);
-        if (JSON.stringify(patterns) === JSON.stringify(state.errorPatterns)) return state;
+        if (JSON.stringify(errorSignals) === JSON.stringify(state.errorSignals)
+          && JSON.stringify(patterns) === JSON.stringify(state.errorPatterns)) return state;
         const oldIds = new Set(state.errorPatterns.map((pattern) => pattern.id));
         const changed = patterns.filter((pattern) => JSON.stringify(pattern) !== JSON.stringify(state.errorPatterns.find((prior) => prior.id === pattern.id)));
         return {
+          errorSignals,
           errorPatterns: patterns,
           events: [...state.events, ...changed.map((pattern) => event(oldIds.has(pattern.id) ? "ERROR_PATTERN_UPDATED" : "ERROR_PATTERN_CREATED", { errorPatternId: pattern.id }, at))],
         };
       }),
       addErrorSignalsAndSchedule: (signals, at = Date.now()) => set((state) => {
         if (signals.length === 0) return state;
+        const errorSignals = mergeErrorSignalJournal(state.errorSignals, signals);
         const patterns = mergeErrorPatterns(state.errorPatterns, signals);
         const items = generateReviewItems(state.reviewItems, patterns, at);
-        if (JSON.stringify(patterns) === JSON.stringify(state.errorPatterns) && JSON.stringify(items) === JSON.stringify(state.reviewItems)) return state;
+        if (JSON.stringify(errorSignals) === JSON.stringify(state.errorSignals)
+          && JSON.stringify(patterns) === JSON.stringify(state.errorPatterns)
+          && JSON.stringify(items) === JSON.stringify(state.reviewItems)) return state;
         const oldPatternIds = new Set(state.errorPatterns.map((pattern) => pattern.id));
         const oldItemIds = new Set(state.reviewItems.map((item) => item.id));
         const changed = patterns.filter((pattern) => JSON.stringify(pattern) !== JSON.stringify(state.errorPatterns.find((prior) => prior.id === pattern.id)));
         return {
+          errorSignals,
           errorPatterns: patterns,
           reviewItems: items,
           events: [
@@ -156,7 +181,7 @@ export const useReviewEngineStore = create<ReviewEngineState>()(
     {
       name: "engineer-learning-os:review-engine:v1",
       skipHydration: true,
-      partialize: ({ errorPatterns, reviewItems, results, events }) => ({ errorPatterns, reviewItems, results, events }),
+      partialize: ({ errorSignals, errorPatterns, reviewItems, results, events }) => ({ errorSignals, errorPatterns, reviewItems, results, events }),
     },
   ),
 );

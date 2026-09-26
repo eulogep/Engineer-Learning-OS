@@ -3,12 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, BookMarked, BookOpenCheck, CalendarDays, FileCheck2, GraduationCap, Languages, LibraryBig, RotateCcw, ShieldCheck } from "lucide-react";
+import { BarChart3, BookMarked, BookOpenCheck, CalendarDays, CalendarRange, DatabaseBackup, FileCheck2, GraduationCap, Languages, LibraryBig, RotateCcw, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LearningRecordBridge } from "@/components/learning-records/LearningRecordBridge";
 import { ReviewRecordBridge } from "@/components/review-engine/ReviewRecordBridge";
 import { TechnicalEnglishRecordBridge } from "@/components/technical-english/TechnicalEnglishRecordBridge";
 import { VisualLearningRecordBridge } from "@/components/visual-learning/VisualLearningRecordBridge";
+import { CanonicalLearningHistoryBridge } from "@/components/learning-history/CanonicalLearningHistoryBridge";
+import { RemoteSyncBridge } from "@/components/learning-history/RemoteSyncBridge";
+import { RemoteModeBadge } from "@/components/learning-history/RemoteModeBadge";
+import { DailyEnglishRecordBridge } from "@/components/daily-mission/DailyEnglishRecordBridge";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 const navItems: NavItem[] = [
@@ -16,9 +20,12 @@ const navItems: NavItem[] = [
   { href: "/learn", label: "Apprendre", icon: BookOpenCheck },
   { href: "/review", label: "Réviser", icon: RotateCcw },
   { href: "/subjects", label: "Matières", icon: LibraryBig },
+  { href: "/semester", label: "Semestre", icon: CalendarRange },
   { href: "/sources", label: "Sources", icon: BookMarked },
+  { href: "/notebooklm", label: "NotebookLM", icon: Sparkles },
   { href: "/evidence", label: "Preuves", icon: FileCheck2 },
   { href: "/progress", label: "Progression", icon: BarChart3 },
+  { href: "/data", label: "Données", icon: DatabaseBackup },
 ];
 
 function active(pathname: string, href: string) {
@@ -56,9 +63,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f4f6f2] text-slate-950">
       <LearningRecordBridge />
+      <DailyEnglishRecordBridge />
       <ReviewRecordBridge />
       <TechnicalEnglishRecordBridge />
       <VisualLearningRecordBridge />
+      <CanonicalLearningHistoryBridge />
+      <RemoteSyncBridge />
       <a href="#main-content" className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-lg bg-emerald-950 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2">Aller au contenu</a>
 
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-slate-200/80 bg-white px-4 py-5 md:flex md:flex-col lg:w-64 lg:px-5">
@@ -81,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#f4f6f2]/90 backdrop-blur-xl">
           <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-9">
             <div><p className="text-sm font-semibold">{pageLabel(pathname)}</p><p className="text-xs text-slate-500">Espace d’apprentissage local</p></div>
-            <div title="Mode local — aucun transfert externe actif" aria-label="Mode local, les données restent dans cet environnement" className="flex items-center gap-2 rounded-full border border-emerald-900/10 bg-white px-3 py-1.5"><ShieldCheck className="size-3.5 text-emerald-700" aria-hidden="true" /><span className="text-xs font-semibold text-emerald-900">Local</span></div>
+            <RemoteModeBadge />
           </div>
           <div className="overflow-x-auto border-t border-slate-200/70 px-3 py-2 md:hidden"><Navigation pathname={pathname} horizontal /></div>
         </header>

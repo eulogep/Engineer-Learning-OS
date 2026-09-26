@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-26",
+  "provenancePolicy": {
+    "originalSourceRole": "ORIGINAL_SOURCE",
+    "derivedArtifactRole": "DERIVED",
+    "derivedDirectory": "knowledge/.derived",
+    "masteryFromSourcePresence": false
+  },
+  "sources": [
+    {
+      "id": "current-semester-state-2026-09-14",
+      "course": "CROSS_COURSE",
+      "type": "SEMESTER_STATE",
+      "path": "knowledge/current-semester/CURRENT_SEMESTER_STATE.md",
+      "academicYear": "2026-2027",
+      "status": "CURRENT_PRIMARY",
+      "canonical": false,
+      "provenanceRole": "ORIGINAL_SOURCE",
+      "dataClassification": "ACADEMIC_PERSONAL_USE",
+      "repositoryVisibility": "LOCAL_ONLY",
+      "sha256": "af1879b106242a63c5535d10e011daae13615a693627b5372d33e176f20b76a0",
+      "notes": "Public sample entry. The real index describes local-only files and is not committed."
+    },
+    {
+      "id": "lprc-program",
+      "course": "CROSS_COURSE",
+      "type": "OFFICIAL_PROGRAM",
+      "path": "knowledge/program/official-programme.pdf",
+      "academicYear": "2026-2027",
+      "status": "PROGRAM_ONLY",
+      "canonical": true,
+      "provenanceRole": "ORIGINAL_SOURCE",
+      "dataClassification": "ACADEMIC_PERSONAL_USE",
+      "repositoryVisibility": "LOCAL_ONLY",
+      "sha256": "2d6582315595f6a354819e08b51db47c2066d6f191d79dfc79ce5ab7d234aad6",
+      "notes": "Public sample entry. The real index describes local-only files and is not committed."
+    },
+    {
+      "id": "english-app-research",
+      "course": "ENGLISH",
+      "type": "RESEARCH_REPORT",
+      "path": "knowledge/elos-research/english-app-research.docx",
+      "status": "HISTORICAL_REFERENCE",
+      "canonical": false,
+      "provenanceRole": "ORIGINAL_SOURCE",
+      "dataClassification": "ACADEMIC_PERSONAL_USE",
+      "repositoryVisibility": "LOCAL_ONLY",
+      "sha256": "3cf49cb4ab84c2ebba33561e77224d4866be8d2501234237a8b6897d72b81480",
+      "notes": "Public sample entry. The real index describes local-only files and is not committed."
+    },
+    {
+      "id": "daily-english-project-memory",
+      "course": "ENGLISH",
+      "type": "PROJECT_MEMORY",
+      "path": "knowledge/elos-research/project-memory.md",
+      "status": "HISTORICAL_REFERENCE",
+      "canonical": false,
+      "provenanceRole": "ORIGINAL_SOURCE",
+      "dataClassification": "PERSONAL",
+      "repositoryVisibility": "LOCAL_ONLY",
+      "sha256": "717459be8bc47a9c57e6adee6f197e3b4d72aae0e3b6f9a4d189c4c2ccf9ec27",
+      "notes": "Public sample entry. The real index describes local-only files and is not committed."
+    },
+    {
+      "id": "company-context-research",
+      "course": "PROFESSIONAL",
+      "type": "RESEARCH_REPORT",
+      "path": "knowledge-private/professional/company-context-research.md",
+      "status": "CURRENT_SECONDARY",
+      "canonical": false,
+      "provenanceRole": "ORIGINAL_SOURCE",
+      "dataClassification": "COMPANY_INTERNAL",
+      "repositoryVisibility": "LOCAL_ONLY",
+      "sha256": "4674f2bb0ccc267d87bbe98adb13d7bcc2daf5890bb14e9584c268aa8ec2072e",
+      "notes": "Public sample entry. The real index describes local-only files and is not committed."
+    }
+  ],
+  "missingButKnownInChatGPT": [
+    "example-calendar.pdf",
+    "example-timetable.xlsx",
+    "example-course-notes.md"
+  ],
+  "_publicSampleNotice": "Public sample data: names, paths and hashes are placeholders. The real source index lists local-only files and is never committed."
+}

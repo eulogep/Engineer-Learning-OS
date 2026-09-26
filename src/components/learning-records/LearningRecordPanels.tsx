@@ -208,6 +208,7 @@ export function EvidenceWorkspace() {
 }
 
 const competencyPresentation: Record<CompetencyId, { subject: string; title: string; evidenceLabel: string }> = {
+  DAILY_ENGLISH_GUIDED_PRACTICE: { subject: "Anglais quotidien", title: "Pratique guidée quotidienne", evidenceLabel: "Daily English Mission" },
   EXCEL_CSV_IMPORT: { subject: "Excel / Données", title: "Import CSV dans Excel", evidenceLabel: "Mission Excel CSV Foundations" },
   TECHNICAL_ENGLISH_EXPLANATION: { subject: "Anglais professionnel", title: "Explication technique en anglais", evidenceLabel: "Mission Technical English" },
   DATA_ANOMALY_IDENTIFICATION: { subject: "Pratique professionnelle", title: "Identifier une anomalie de données", evidenceLabel: "Scénario professionnel industriel" },
@@ -233,7 +234,7 @@ function CompetencyCard({ competency, supporting }: { competency: Pick<Competenc
 export function ProgressWorkspace() {
   const { hydrated, competencies, evidence } = useLearningRecordStore();
   if (!hydrated) return <p className="text-sm text-slate-500">Chargement de la progression locale…</p>;
-  const ids: CompetencyId[] = ["EXCEL_CSV_IMPORT", "TECHNICAL_ENGLISH_EXPLANATION", "DATA_ANOMALY_IDENTIFICATION", "FACT_VS_ASSUMPTION", "PROFESSIONAL_STATUS_UPDATE", "ACTIONABLE_NEXT_STEP", "NETWORK_FUNDAMENTALS", "OSI_TCP_IP_REASONING"];
+  const ids: CompetencyId[] = ["DAILY_ENGLISH_GUIDED_PRACTICE", "EXCEL_CSV_IMPORT", "TECHNICAL_ENGLISH_EXPLANATION", "DATA_ANOMALY_IDENTIFICATION", "FACT_VS_ASSUMPTION", "PROFESSIONAL_STATUS_UPDATE", "ACTIONABLE_NEXT_STEP", "NETWORK_FUNDAMENTALS", "OSI_TCP_IP_REASONING"];
   return <div className="space-y-6"><header><p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Ta progression</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Des compétences expliquées par leurs preuves</h1><p className="mt-2 text-slate-600">Aucun pourcentage artificiel : chaque statut vient uniquement de tes activités enregistrées.</p></header><div className="grid gap-5">{ids.map((competencyId) => {
     const competency: Pick<CompetencyRecord, "competencyId" | "status" | "supportingEvidenceIds" | "rationale"> = competencies.find((record) => record.competencyId === competencyId) ?? { competencyId, status: "NOT_SEEN", supportingEvidenceIds: [], rationale: COMPETENCY_SEMANTICS.NOT_SEEN };
     const supporting = evidence.filter((record) => competency.supportingEvidenceIds.includes(record.id));

@@ -13,5 +13,6 @@ export default function ExcelMissionPage() {
     <Button asChild variant="ghost" className="-ml-3"><Link href="/"><ArrowLeft aria-hidden="true" />Aujourd’hui</Link></Button>
     <MissionSourcesCard sourceBundleIds={excelLevel1Mission.sourceBundleIds ?? []} />
     <MissionRuntime mission={excelLevel1Mission} />
+    <div className="flex justify-center"><Button asChild variant="outline"><Link href="/learn/excel-csv-foundations-level-1/held-out">Passer à l’épreuve autonome</Link></Button></div>
   </div>;
 }

@@ -12,6 +12,7 @@ const rationale: Record<CompetencyStatus, string> = {
 };
 
 function practicedRationale(competencyId: CompetencyId) {
+  if (competencyId === "DAILY_ENGLISH_GUIDED_PRACTICE") return "Pratiquée lors d’une mission quotidienne guidée avec production orale.";
   if (competencyId === "TECHNICAL_ENGLISH_EXPLANATION") return "Pratiquée lors d’une explication technique guidée en anglais.";
   if (["DATA_ANOMALY_IDENTIFICATION", "FACT_VS_ASSUMPTION", "PROFESSIONAL_STATUS_UPDATE", "ACTIONABLE_NEXT_STEP"].includes(competencyId)) {
     return "Pratiquée dans un scénario professionnel guidé avec preuve locale.";
@@ -131,6 +132,7 @@ export function reconcileExcelAttempt(existing: EvidenceRecord[], attempt: Missi
 }
 
 export function rebuildCompetencies(evidence: EvidenceRecord[], competencyIds: CompetencyId[] = [
+  "DAILY_ENGLISH_GUIDED_PRACTICE",
   "EXCEL_CSV_IMPORT",
   "TECHNICAL_ENGLISH_EXPLANATION",
   "DATA_ANOMALY_IDENTIFICATION",

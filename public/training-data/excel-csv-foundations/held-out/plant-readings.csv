@@ -1,0 +1,9 @@
+Asset_ID;Site;Reading_kWh;Unit;Status
+HX-201;Paris-A;18.4;kWh;OK
+HX-202;Paris-A;17.9;kWh;OK
+HX-203;Lyon-B;21.1;kWh;OK
+HX-204;Lyon-B;20.8;kWh;OK
+HX-205;Nantes-C;16.7;kWh;OK
+HX-206;Nantes-C;;kWh;CHECK
+HX-207;Lille-D;19.2;kWh;OK
+HX-208;Lille-D;18.8;kWh;OK

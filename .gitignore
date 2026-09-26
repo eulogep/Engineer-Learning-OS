@@ -116,5 +116,28 @@ _tes_extract_tmp/
 /.venv-docling/
 /.document-cache/
 
+# Dedicated NotebookLM automation session — local auth/cookies only
+/.local/notebooklm-session/
+
 # Third-party Excel learning resources — personal learning only
 /Ressource Formation excel/
+# Local ELOS knowledge sources and import packs
+/ELOS_knowledge_pack.zip
+/knowledge-private/
+/knowledge/current-semester/CURRENT_SEMESTER_STATE.md
+/knowledge/**/*.pdf
+/knowledge/**/*.docx
+/knowledge/elos-research/memoire-projet-daily-english-mission.md
+/knowledge/**/.derived-private/
+*.secret
+*.private
+
+# Local agent notes, archives and scaffolding: never part of the public repository
+/.agent/
+/.agents/
+/.token-efficiency/
+/.zscripts/
+/download/
+/skill*/
+/worklog.md
+/TES-*.zip

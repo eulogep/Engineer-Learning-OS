@@ -1,5 +1,6 @@
 import type { EvidenceRecord } from "../learning-records/types";
 import type { MissionAttempt } from "../mission-runtime/types";
+import { scheduleReview } from "../scientific-pedagogy/core";
 import type { ErrorPattern, ErrorSignal, ReviewConcept, ReviewItem, ReviewResultRecord } from "./types";
 
 export const MINUTE_MS = 60 * 1000;
@@ -429,7 +430,17 @@ export function selectVisibleReviewItems(
 
 export function applyReviewResult(item: ReviewItem, patterns: ErrorPattern[], result: ReviewResultRecord) {
   const successCount = item.successCount + (result.correct ? 1 : 0);
-  const intervalMinutes = result.correct ? (successCount === 1 ? 3 * 24 * 60 : successCount === 2 ? 7 * 24 * 60 : 14 * 24 * 60) : 10;
+  const schedule = scheduleReview({
+    correct: result.correct,
+    successfulReviewCount: successCount,
+    confidence: result.confidence,
+    hintCount: result.hintCount,
+    retryCount: result.retryCount,
+    recurringErrorCount: Math.max(0, ...patterns
+      .filter((pattern) => item.errorPatternIds.includes(pattern.id))
+      .map((pattern) => pattern.occurrenceCount)),
+  });
+  const intervalMinutes = schedule.intervalMinutes;
   const nextReviewAt = result.completedAt + intervalMinutes * MINUTE_MS;
   const reviewItem: ReviewItem = {
     ...item,
