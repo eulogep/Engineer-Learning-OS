@@ -4,8 +4,6 @@
 
 ### *The Evidence-Grounded, Local-First Learning Operating System for Software Engineers*
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/eulogep/daily-english-mission)
-[![Tests](https://img.shields.io/badge/tests-214%2F214%20PASS-success?style=for-the-badge&logo=node.js&logoColor=white)](https://github.com/eulogep/daily-english-mission)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16.3-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -44,7 +42,7 @@ Traditional e-learning platforms rely on **passive video watching**, **superfici
 | **Quiz Grounding** | Generic LLM hallucinated questions | **Exact citation matching & deterministic page anchoring** |
 | **Error Handling** | *"Wrong answer, try again"* | **Pattern detection & automated spaced retrieval scheduling** |
 | **Document Processing** | Proprietary cloud lock-in | **Local PDF.js + offline Docling extraction pipeline** |
-| **Privacy & Storage** | Cloud tracking, vendor data harvesting | **100% Local-first, offline-capable, zero data leaks** |
+| **Privacy & Storage** | Cloud tracking, vendor data harvesting | **IndexedDB authority with optional RLS-protected sync of explicitly allowed metadata** |
 | **Language Practice** | Disconnected flashcard drills | **English-in-the-Loop with audio recordings & technical feedback** |
 
 ---
@@ -72,6 +70,12 @@ Traditional e-learning platforms rely on **passive video watching**, **superfici
 - **Realistic Workplace Cases:** Scenario solving based on synthetic industrial telemetry data.
 - **Multidimensional Rubrics:** Validates factual accuracy, hypothesis vs fact separation, and actionable next steps.
 - **AI-Assistance Tagging:** Explicitly separates independent student writing from AI-assisted text.
+
+
+### 🧭 6. Evidence-Informed Pedagogical Policy (`scientific-pedagogy`)
+- **Inspectable Decisions:** Six scientific decision records connect claims to legal sources, limitations, and measurement plans.
+- **Context-Aware Practice:** Confidence calibration, bounded assistance, semantic self-explanation, transfer evidence, and curated concept relations inform the next action.
+- **Canonical Shadow Projection:** The policy reads privacy-safe IndexedDB event metadata without rewriting EventIds or independently awarding mastery.
 
 ---
 
@@ -101,12 +105,14 @@ flowchart TD
         TE["technical-english\n(Audio Evidence)"]
         DM["deep-mastery\n(Mental Model Invariants)"]
         MR["mission-runtime\n(Active Time & Session Engine)"]
+        SP["scientific-pedagogy\n(Evidence-Informed Policy)"]
     end
 
     subgraph Infra ["🔌 Infrastructure & Local Storage"]
         PDF["PDF.js 6.2 (Apache-2.0)"]
         Docling["Docling CLI 2.121 (MIT)"]
         Zustand["Zustand LocalStore (Browser)"]
+        IndexedDB["IndexedDB (Canonical History)"]
         SQLite["SQLite / Prisma 6"]
         WebAudio["Web Audio / MediaRecorder API"]
     end
@@ -120,33 +126,38 @@ flowchart TD
 ## 🚀 Quick Start
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) `>= 20.0.0` (Tested on Node 22 & 24)
-- `npm` or `bun`
+- [Node.js](https://nodejs.org/) `>= 24` (a clean-clone run was verified with Node 26.8.1)
+- `npm` (the committed `package-lock.json` is the reference lockfile)
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/eulogep/daily-english-mission.git
-cd daily-english-mission
-npm install
+git clone https://github.com/eulogep/Engineer-Learning-OS.git
+cd Engineer-Learning-OS
+npm ci
 ```
 
-### 2. Run Development Server
+### 2. Run the Development Server
 ```bash
 npm run dev
 ```
-Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+Open **[http://localhost:3000](http://localhost:3000)** in your browser. The application is local-first: learner state lives in the browser, so no database or account is required to start.
 
-### 3. Run Automated Tests
+### 3. Check the Project
 ```bash
-node --test --experimental-strip-types tests/unit/**/*.test.ts tests/integration/**/*.test.ts
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint
+npm test            # node:test suites, no extra flag needed
 ```
-> **Output:** `214/214 PASS` in ~2 seconds.
+`npm test` runs the unit and integration suites with Node's built-in test runner. A small resolver (`tests/register-loader.mjs`) is registered automatically, so the command works as written from a fresh clone.
 
 ### 4. Build for Production
-Cross-platform zero-dependency production build (Windows, Linux, macOS):
 ```bash
 npm run build
 ```
+The build creates a standalone Next.js server under `.next/standalone`.
+
+### Sample data
+The semester registry (`src/modules/current-semester/registry.ts`) and the source index (`knowledge/index.json`) ship with **placeholder data**. Real course planning and the list of your own documents stay in ignored, local-only files and are never committed.
 
 ---
 
@@ -157,10 +168,12 @@ src/modules/
 ├── academic-workspace/       # Course registry, grounded quiz validation, adaptive remediation
 ├── source-engine/            # Canonical vs derived source records, provenance graph, mission bundles
 ├── document-extraction/      # Unified extraction pipeline (PDF.js adapter + Docling local bridge)
+├── learning-history/         # Canonical IndexedDB event history, recovery, and guarded metadata sync
 ├── learning-records/         # Immutable evidence ledger & deterministic competency derivation
 ├── review-engine/            # Error signal detection, error patterns, spaced retrieval engine
 ├── professional-scenarios/   # Synthetic industrial cases & multidimensional rubrics
 ├── deep-mastery/             # Deliberate practice on fundamental invariants (CSV, encodings)
+├── scientific-pedagogy/      # Evidence-traceable scheduling, assistance, calibration, transfer policy
 ├── technical-english/        # Spoken/written technical English & audio evidence persistence
 └── mission-runtime/          # Multi-step interactive mission runner & active time tracking
 ```
@@ -184,7 +197,7 @@ src/modules/
 
 ## 🛡️ Privacy, Security & Data Safety
 
-- 🔒 **Zero Data Leaks:** Proprietary company documents, internal spreadsheets, private audio files, and personal credentials are never tracked or committed.
+- 🔒 **Bounded data flow:** Proprietary documents, internal spreadsheets, private audio, and credentials stay outside Git and remote sync; only metadata classified `SYNC_ALLOWED` can enter the guarded outbox.
 - 🧪 **Synthetic Fixtures Only:** All automated tests use 100% synthetic, non-sensitive fixtures (`TRAINING_SYNTHETIC`).
 - 🌐 **Offline by Default:** Document extraction, audio recording, quiz grading, and competency derivation run entirely on your local machine without mandatory network calls.
 
@@ -207,7 +220,7 @@ Contributions are welcome! Whether you want to add new academic subjects, create
 1. Fork the project
 2. Create your feature branch (`git checkout -b feat/grounded-skill-pilot`)
 3. Commit your changes (`git commit -m 'feat: add grounded skill pilot'`)
-4. Verify all tests pass (`node --test --experimental-strip-types tests/unit/**/*.test.ts tests/integration/**/*.test.ts`)
+4. Verify the checks pass (`npm run typecheck && npm run lint && npm test`)
 5. Push to the branch (`git push origin feat/grounded-skill-pilot`)
 6. Open a Pull Request
 
