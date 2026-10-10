@@ -1,0 +1,42 @@
+# Allowlist: everything is excluded unless explicitly listed below.
+# Le CLI Vercel n'utilise pas .gitignore : tout nouveau dossier local
+# (secrets, documents académiques, bases, audios, journaux) reste exclu par défaut.
+/*
+
+# Application sources and static assets
+!/src/
+!/public/
+
+# Build manifests and configuration (npm only: bun.lock is left out on purpose)
+!/package.json
+!/package-lock.json
+!/next.config.ts
+!/next-env.d.ts
+!/tsconfig.json
+!/postcss.config.mjs
+!/tailwind.config.ts
+!/components.json
+!/vercel.json
+
+# Prisma schema only (never the local SQLite database or the seed)
+!/prisma/
+/prisma/*
+!/prisma/schema.prisma
+
+# Versioned knowledge metadata imported at build time
+!/knowledge/
+/knowledge/*
+!/knowledge/index.json
+!/knowledge/catalog/
+/knowledge/catalog/*
+!/knowledge/catalog/excel-resources.json
+
+# Defense in depth, even inside allowlisted folders
+.env*
+*.secret
+*.private
+*.db
+*.db-journal
+*.sqlite*
+*.log
+**/.derived-private/
