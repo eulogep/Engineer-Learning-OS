@@ -4,8 +4,10 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useMissionStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Mic, Square, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { isExternalZaiClientProcessingEnabled } from "@/config/external-ai";
+import { startLocalSession } from "@/components/daily-mission/mission-gateway";
 
 const MAX_DURATION = 120; // 2 minutes in seconds
 
@@ -24,6 +26,8 @@ export function SpeakingStep() {
     transcription,
     setTranscription,
     setSpeakingSession,
+    setCorrectedText,
+    setFeedback,
     setStep,
     setError,
   } = useMissionStore();
@@ -31,6 +35,9 @@ export function SpeakingStep() {
   const [recording, setRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const [transcribing, setTranscribing] = useState(false);
+  // Local mode: the recording never leaves the browser; it is only replayed.
+  const [localAudioUrl, setLocalAudioUrl] = useState<string | null>(null);
+  const [draft, setDraft] = useState(transcription ?? "");
 
   // `done` always tracks `transcription` 1:1 in every code path below
   // (startRecording clears both, transcribeAudio sets both), so it's
@@ -63,6 +70,17 @@ export function SpeakingStep() {
       cleanupStream();
     };
   }, []);
+
+  useEffect(() => () => { if (localAudioUrl) URL.revokeObjectURL(localAudioUrl); }, [localAudioUrl]);
+
+  const submitLocalProduction = useCallback(() => {
+    const text = draft.trim();
+    if (!text) return;
+    setSpeakingSession(startLocalSession(text, duration));
+    setCorrectedText(null);
+    setFeedback(null);
+    setTranscription(text);
+  }, [draft, duration, setSpeakingSession, setCorrectedText, setFeedback, setTranscription]);
 
   const transcribeAudio = useCallback(
     async (blob: Blob) => {
@@ -124,15 +142,21 @@ export function SpeakingStep() {
         cleanupStream();
         setRecording(false);
 
-        // Auto-transcribe
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        await transcribeAudio(blob);
+        const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || "audio/webm" });
+        if (externalProcessingEnabled) {
+          await transcribeAudio(blob);
+        } else {
+          setLocalAudioUrl(URL.createObjectURL(blob));
+        }
       };
 
       mediaRecorder.start(1000); // collect chunks every second
       setRecording(true);
       setDuration(0);
       setTranscription(null);
+      setCorrectedText(null);
+      setFeedback(null);
+      setLocalAudioUrl(null);
 
       // Start timer
       timerRef.current = setInterval(() => {
@@ -152,7 +176,7 @@ export function SpeakingStep() {
           : "Impossible d'accéder au micro"
       );
     }
-  }, [setError, setTranscription, stopTimer, cleanupStream, transcribeAudio]);
+  }, [externalProcessingEnabled, setError, setTranscription, setCorrectedText, setFeedback, stopTimer, cleanupStream, transcribeAudio]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && recording) {
@@ -193,8 +217,8 @@ export function SpeakingStep() {
       <Card className="border-stone-200">
         <CardContent className="p-6 flex flex-col items-center gap-4">
           {!externalProcessingEnabled && (
-            <div className="w-full rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">
-              La transcription cloud ZAI est désactivée pour protéger vos données réelles. Utilisez l’exercice Technical English pour enregistrer un audio local ou saisir une réponse sans service externe.
+            <div className="w-full rounded-lg border border-stone-200 bg-stone-50 p-3 text-xs text-stone-600" role="note">
+              Mode local : l’enregistrement reste dans votre navigateur (réécoute uniquement). Écrivez ensuite ce que vous avez dit pour obtenir la correction.
             </div>
           )}
           {/* Timer */}
@@ -213,13 +237,12 @@ export function SpeakingStep() {
           {!done && !transcribing && (
             <button
               onClick={recording ? stopRecording : startRecording}
-              disabled={!externalProcessingEnabled}
               className={`flex h-20 w-20 items-center justify-center rounded-full transition-all disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none ${
                 recording
                   ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 animate-pulse"
                   : "bg-stone-900 hover:bg-stone-800 shadow-lg shadow-stone-200"
               }`}
-              aria-label={externalProcessingEnabled ? (recording ? "Arrêter l'enregistrement" : "Commencer l'enregistrement") : "Transcription cloud désactivée"}
+              aria-label={recording ? "Arrêter l'enregistrement" : "Commencer l'enregistrement"}
             >
               {recording ? (
                 <Square className="h-8 w-8 text-white fill-white" />
@@ -227,6 +250,10 @@ export function SpeakingStep() {
                 <Mic className="h-8 w-8 text-white" />
               )}
             </button>
+          )}
+
+          {localAudioUrl && !recording && (
+            <audio controls src={localAudioUrl} className="w-full" aria-label="Réécouter mon enregistrement" />
           )}
 
           {/* Transcribing state */}
@@ -239,13 +266,45 @@ export function SpeakingStep() {
         </CardContent>
       </Card>
 
+      {/* Local mode: the learner writes what they said */}
+      {!externalProcessingEnabled && !done && (
+        <Card className="border-stone-200">
+          <CardContent className="space-y-3 p-4">
+            <label htmlFor="local-production" className="text-sm font-medium text-stone-800">
+              Ce que vous avez dit (ou voulez dire), en anglais
+            </label>
+            <Textarea
+              id="local-production"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Today I want to talk about…"
+              className="min-h-32 bg-white"
+              disabled={recording}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-stone-400">{draft.trim() ? draft.trim().split(/\s+/).length : 0} mots</p>
+              <Button onClick={submitLocalProduction} disabled={!draft.trim() || recording} variant="secondary">
+                Valider ma production
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Transcription result */}
       {done && transcription && (
         <Card className="border-green-200 bg-green-50/50">
           <CardContent className="p-4 space-y-2">
-            <p className="text-xs font-medium text-green-700 uppercase tracking-wider">
-              Transcription
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-green-700 uppercase tracking-wider">
+                {externalProcessingEnabled ? "Transcription" : "Votre production"}
+              </p>
+              {!externalProcessingEnabled && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setDraft(transcription); setTranscription(null); }}>
+                  Modifier
+                </Button>
+              )}
+            </div>
             <p className="text-sm text-stone-800 leading-relaxed">
               {transcription}
             </p>

@@ -6,12 +6,14 @@ import type {
   SpeakingSession,
   ParsedFeedback,
 } from "@/types";
+import type { MissionPersistence } from "@/modules/daily-english/local-mission";
 
 interface MissionState {
   // Data
   words: Word[];
   mission: DailyMission | null;
   personalSentences: Record<string, string>; // wordId → sentence
+  persistence: MissionPersistence;
 
   // Speaking
   transcription: string | null;
@@ -29,6 +31,7 @@ interface MissionState {
   // Actions
   setWords: (words: Word[]) => void;
   setMission: (mission: DailyMission) => void;
+  setPersistence: (persistence: MissionPersistence) => void;
   setPersonalSentence: (wordId: string, sentence: string) => void;
   setStep: (step: MissionStep) => void;
   setTranscription: (text: string | null) => void;
@@ -46,6 +49,7 @@ const initialState = {
   words: [],
   mission: null,
   personalSentences: {},
+  persistence: "server" as MissionPersistence,
   transcription: null,
   correctedText: null,
   feedback: null,
@@ -62,6 +66,7 @@ export const useMissionStore = create<MissionState>((set) => ({
 
   setWords: (words) => set({ words }),
   setMission: (mission) => set({ mission }),
+  setPersistence: (persistence) => set({ persistence }),
   setPersonalSentence: (wordId, sentence) =>
     set((state) => ({
       personalSentences: { ...state.personalSentences, [wordId]: sentence },

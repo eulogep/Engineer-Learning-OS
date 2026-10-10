@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Square, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { isLocalSessionId } from "@/modules/daily-english/local-mission";
+import { storeLocalSession } from "@/components/daily-mission/mission-gateway";
 
 const MAX_DURATION = 120; // 2 minutes
 
@@ -61,8 +63,14 @@ export function RepeatStep() {
     };
   }, []);
 
+  const localMode = isLocalSessionId(speakingSession?.id);
+
   const saveRepeat = useCallback(async () => {
     if (!speakingSession?.id) return;
+    if (isLocalSessionId(speakingSession.id)) {
+      setSpeakingSession(storeLocalSession({ ...speakingSession, repeated: true, repeatDurationSeconds: duration }));
+      return;
+    }
 
     setSaving(true);
     try {
@@ -223,6 +231,12 @@ export function RepeatStep() {
                 <Mic className="h-8 w-8 text-white" />
               )}
             </button>
+          )}
+
+          {localMode && !done && !recording && !saving && (
+            <Button variant="ghost" size="sm" className="text-xs text-stone-500" onClick={() => void saveRepeat()}>
+              Pas de micro ? J’ai lu le texte à voix haute
+            </Button>
           )}
 
           {/* Saving state */}

@@ -6,20 +6,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, ArrowRight } from "lucide-react";
+import { loadTodayMission } from "@/components/daily-mission/mission-gateway";
+import { vocabularyEntry } from "@/modules/daily-english/vocabulary";
+import type { WordStatus } from "@/types";
 
-async function fetchDailyMission() {
-  const res = await fetch("/api/daily-mission");
-  if (!res.ok) {
-    throw new Error("Impossible de charger les mots du jour");
-  }
-  return res.json() as Promise<{
-    words: import("@/types").Word[];
-    mission: import("@/types").DailyMission;
-  }>;
-}
+const STATUS_LABEL: Record<WordStatus, { label: string; className: string }> = {
+  nouveau: { label: "Nouveau", className: "border-blue-200 bg-blue-50 text-blue-700" },
+  actif: { label: "Révision", className: "border-amber-200 bg-amber-50 text-amber-800" },
+  maitrise: { label: "Maîtrisé", className: "border-green-200 bg-green-50 text-green-700" },
+};
 
 export function WordsStep() {
-  const { words, setWords, setMission, setPersonalSentence, setStep, setError } = useMissionStore();
+  const { words, setWords, setMission, setPersistence, setPersonalSentence, setStep, setError } = useMissionStore();
   const [loading, setLoading] = useState(words.length === 0);
   const fetchedRef = useRef(false);
 
@@ -31,7 +29,8 @@ export function WordsStep() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchDailyMission();
+      const data = await loadTodayMission();
+      setPersistence(data.persistence);
       setWords(data.words);
       setMission(data.mission);
       // Restore saved personal sentences from the mission
@@ -51,11 +50,13 @@ export function WordsStep() {
     } finally {
       setLoading(false);
     }
-  }, [words.length, setWords, setMission, setError]);
+  }, [words.length, setWords, setMission, setPersistence, setPersonalSentence, setError]);
 
   useEffect(() => {
     void loadWords();
   }, [loadWords]);
+
+  const reviewCount = words.filter((word) => word.status !== "nouveau").length;
 
   if (loading) {
     return (
@@ -77,38 +78,52 @@ export function WordsStep() {
         <p className="text-sm text-stone-500">
           Mémorisez-les. Vous devrez écrire une phrase personnelle pour chacun.
         </p>
+        {words.length > 0 && (
+          <p className="text-xs text-stone-400">
+            {words.length - reviewCount} nouveau{words.length - reviewCount > 1 ? "x" : ""} · {reviewCount} en révision
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
-        {words.map((word, i) => (
-          <Card
-            key={word.id}
-            className="border-stone-200 bg-white transition-shadow hover:shadow-sm"
-          >
-            <CardContent className="flex items-center gap-4 p-4">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-sm font-medium text-stone-600">
-                {i + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-stone-900 text-lg">
-                    {word.word}
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="text-xs text-stone-400 font-normal"
-                  >
-                    {word.category}
-                  </Badge>
+        {words.map((word, i) => {
+          const entry = vocabularyEntry(word.word);
+          const status = STATUS_LABEL[word.status] ?? STATUS_LABEL.nouveau;
+          return (
+            <Card
+              key={word.id}
+              className="border-stone-200 bg-white transition-shadow hover:shadow-sm"
+            >
+              <CardContent className="flex items-start gap-4 p-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-sm font-medium text-stone-600">
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 font-semibold text-stone-900 text-lg">
+                      {word.word}
+                    </span>
+                    <Badge variant="outline" className={`text-xs font-normal ${status.className}`}>
+                      {status.label}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs text-stone-400 font-normal">
+                      {entry ? `${entry.packLabel} · ${word.category}` : word.category}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-stone-500 mt-0.5">
+                    {word.translation}
+                  </p>
+                  {entry && (
+                    <p className="mt-1.5 text-sm italic text-stone-600">
+                      “{entry.example}”
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-stone-500 mt-0.5">
-                  {word.translation}
-                </p>
-              </div>
-              <BookOpen className="h-4 w-4 text-stone-300 shrink-0" />
-            </CardContent>
-          </Card>
-        ))}
+                <BookOpen className="mt-1 h-4 w-4 text-stone-300 shrink-0" />
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {words.length > 0 && (

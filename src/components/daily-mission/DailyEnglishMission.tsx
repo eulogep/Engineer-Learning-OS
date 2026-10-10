@@ -23,7 +23,7 @@ const STEPS: { key: MissionStep; label: string; icon: React.ReactNode }[] = [
 ];
 
 export function DailyEnglishMission() {
-  const { currentStep, error, setStep, setError } = useMissionStore();
+  const { currentStep, error, persistence, setStep, setError } = useMissionStore();
   const stepIndex = STEPS.findIndex((step) => step.key === currentStep);
 
   return (
@@ -36,9 +36,16 @@ export function DailyEnglishMission() {
               {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
-          <Badge variant={currentStep === "done" ? "default" : "secondary"} className="text-xs">
-            Étape {stepIndex + 1}/{STEPS.length}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {persistence === "browser" && (
+              <Badge variant="outline" className="text-xs text-stone-500" title="Progression enregistrée uniquement dans ce navigateur">
+                Mode local
+              </Badge>
+            )}
+            <Badge variant={currentStep === "done" ? "default" : "secondary"} className="text-xs">
+              Étape {stepIndex + 1}/{STEPS.length}
+            </Badge>
+          </div>
         </div>
       </header>
 
