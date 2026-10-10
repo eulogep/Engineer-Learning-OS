@@ -218,6 +218,12 @@ export const VOCABULARY: readonly VocabularyWord[] = VOCABULARY_PACKS.flatMap((p
 );
 
 const BY_WORD = new Map(VOCABULARY.map((entry) => [entry.word.toLowerCase(), entry]));
+const RANK = new Map(VOCABULARY.map((entry, index) => [entry.word.toLowerCase(), index]));
+
+/** Curated teaching order; words unknown to the bank (custom rows) come last. */
+export function vocabularyRank(word: string): number {
+  return RANK.get(word.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+}
 
 /** Looks a word up by its text, so rows from the SQLite database get pack and example too. */
 export function vocabularyEntry(word: string): VocabularyWord | null {

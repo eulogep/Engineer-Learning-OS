@@ -1,39 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { VOCABULARY } from "../src/modules/daily-english/vocabulary.ts";
 
-const WORDS = [
-  ["embrace", "accepter / serrer", "verbe"],
-  ["resilient", "résilient", "adjectif"],
-  ["perspective", "perspective / point de vue", "nom"],
-  ["overcome", "surmonter", "verbe"],
-  ["genuine", "authentique / sincère", "adjectif"],
-  ["thrive", "s'épanouir / prospérer", "verbe"],
-  ["subtle", "subtil", "adjectif"],
-  ["acknowledge", "reconnaître / admettre", "verbe"],
-  ["meaningful", "significatif / plein de sens", "adjectif"],
-  ["approach", "approche / aborder", "verbe"],
-  ["reflection", "réflexion / reflet", "nom"],
-  ["collaborate", "collaborer", "verbe"],
-  ["challenge", "défi / mettre au défi", "nom"],
-  ["inspire", "inspirer", "verbe"],
-  ["curiosity", "curiosité", "nom"],
-  ["adapt", "s'adapter", "verbe"],
-  ["empathy", "empathie", "nom"],
-  ["progress", "progrès / progresser", "nom"],
-  ["accomplish", "accomplir / réaliser", "verbe"],
-  ["insight", "perspicacité / aperçu", "nom"],
-  ["determination", "détermination", "nom"],
-  ["gratitude", "gratitude / reconnaissance", "nom"],
-  ["influence", "influence / influencer", "nom"],
-  ["explore", "explorer", "verbe"],
-  ["significant", "significatif / important", "adjectif"],
-  ["struggle", "lutte / lutter", "verbe"],
-  ["transform", "transformer", "verbe"],
-  ["opportunity", "opportunité", "nom"],
-  ["contribute", "contribuer", "verbe"],
-  ["intention", "intention", "nom"],
-];
+// Single source of truth shared with `prisma/seed.ts` and the browser-only mode.
+// Node >= 24 strips the types of this dependency-free module natively.
+const WORDS = VOCABULARY.map((entry) => [entry.word, entry.translation, entry.category]);
 
 function quote(value) {
   return "'" + value.replaceAll("'", "''") + "'";
@@ -43,7 +15,7 @@ const databasePath = path.resolve(process.env.ELOS_LOCAL_DATABASE_PATH ?? "prism
 mkdirSync(path.dirname(databasePath), { recursive: true });
 const seed = WORDS.map(([word, translation, category]) =>
   `INSERT OR IGNORE INTO "Word" ("id", "word", "translation", "category", "status")
-VALUES (${quote("seed-" + word)}, ${quote(word)}, ${quote(translation)}, ${quote(category)}, 'nouveau');`
+VALUES (${quote("seed-" + word.toLowerCase().replace(/\s+/g, "-"))}, ${quote(word)}, ${quote(translation)}, ${quote(category)}, 'nouveau');`
 ).join("\n");
 const sql = `PRAGMA foreign_keys=ON;
 BEGIN IMMEDIATE;

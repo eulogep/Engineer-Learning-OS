@@ -4,6 +4,8 @@ import {
   DAILY_WORD_COUNT,
   LOCAL_STATE_KEY,
   analyzeProduction,
+  calendarDayRange,
+  inMissionOrder,
   createLocalSession,
   dayKey,
   isLocalSessionId,
@@ -125,6 +127,21 @@ test("stored history is bounded so localStorage cannot grow without limit", () =
   const storage = memoryStorage();
   for (let day = 0; day < 70; day += 1) loadOrCreateLocalMission(storage, new Date(2026, 0, 1 + day), nextId);
   assert.equal(readLocalState(storage).missions.length, 60);
+});
+
+test("the mission day is one calendar day, never yesterday's midnight", () => {
+  const { start, end } = calendarDayRange(new Date(2026, 9, 10, 15, 30));
+  const yesterdayMission = new Date(2026, 9, 9);
+  assert.equal(yesterdayMission >= start && yesterdayMission < end, false);
+  assert.equal(start.getTime(), new Date(2026, 9, 10).getTime());
+  assert.equal(end.getTime(), new Date(2026, 9, 11).getTime());
+  // DST end in Europe (25 Oct 2026): the day still ends at the next midnight.
+  assert.equal(calendarDayRange(new Date(2026, 9, 25, 12)).end.getDate(), 26);
+});
+
+test("rows come back in mission order whatever the storage order", () => {
+  const rows = [{ id: "c" }, { id: "a" }, { id: "b" }];
+  assert.deepEqual(inMissionOrder(["a", "b", "c", "missing"], rows).map((row) => row.id), ["a", "b", "c"]);
 });
 
 test("word usage detection accepts regular inflections only for the target word", () => {
