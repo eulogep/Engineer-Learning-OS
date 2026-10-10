@@ -43,6 +43,19 @@ export function dayKey(date: Date): DayKey {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** [start of today, start of tomorrow) in local time, safe across DST changes. */
+export function calendarDayRange(now: Date): { start: Date; end: Date } {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return { start, end };
+}
+
+/** Puts rows back in the mission's order (databases return them in storage order). */
+export function inMissionOrder<T extends { id: string }>(wordIds: readonly string[], rows: readonly T[]): T[] {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return wordIds.flatMap((id) => byId.get(id) ?? []);
+}
+
 function toWord(entry: VocabularyWord, review: ReviewState): Word {
   return {
     id: localWordId(entry.word),

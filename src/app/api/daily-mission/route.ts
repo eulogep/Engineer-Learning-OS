@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { startOfDay } from "date-fns";
-import { DAILY_WORD_COUNT, dayKey } from "@/modules/daily-english/local-mission";
+import { DAILY_WORD_COUNT, calendarDayRange, dayKey, inMissionOrder } from "@/modules/daily-english/local-mission";
 import { applyReview, isReviewOutcome, scheduleDailyWords, type ReviewState } from "@/modules/daily-english/spaced-review";
-import { vocabularyEntry } from "@/modules/daily-english/vocabulary";
+import { vocabularyEntry, vocabularyRank } from "@/modules/daily-english/vocabulary";
 
 function reviewStateOf(word: { lastUsedAt: Date | null; nextReviewDate: Date | null }): ReviewState {
   // Words picked by the former rotation have lastUsedAt but no schedule: treat them as new.
@@ -24,25 +24,31 @@ export async function GET() {
     // Check if a mission already exists for today
     const existing = await db.dailyMission.findFirst({
       where: {
-        date: {
-          gte: new Date(today.getTime() - 24 * 60 * 60 * 1000),
-          lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
-        },
+        // Today's calendar day only: the former ±24h window also matched
+        // yesterday's mission (dated at yesterday's midnight).
+        date: { gte: calendarDayRange(today).start, lt: calendarDayRange(today).end },
       },
     });
 
     if (existing) {
       const wordIds: string[] = JSON.parse(existing.wordIdsJson);
-      const words = await db.word.findMany({
+      const rows = await db.word.findMany({
         where: { id: { in: wordIds } },
       });
+      // Keep the mission's order so the list is stable across reloads.
+      const words = inMissionOrder(wordIds, rows);
       return NextResponse.json({ words, mission: existing });
     }
 
     // Spaced review: due words first, then new words interleaved across
     // vocabulary packs. lastUsedAt / nextReviewDate are only written when the
     // mission is completed (see PATCH), so an unfinished day is simply retried.
-    const all = await db.word.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+    // Rows inserted by the setup script share one timestamp: follow the
+    // curated vocabulary order, then creation order for custom words.
+    const all = (await db.word.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] }))
+      .map((word, index) => ({ word, index }))
+      .sort((a, b) => vocabularyRank(a.word.word) - vocabularyRank(b.word.word) || a.index - b.index)
+      .map(({ word }) => word);
     const wordIds = scheduleDailyWords(
       all.map((word) => ({ id: word.id, group: vocabularyEntry(word.word)?.pack ?? "custom", review: reviewStateOf(word) })),
       dayKey(today),
@@ -51,19 +57,14 @@ export async function GET() {
     const byId = new Map(all.map((word) => [word.id, word]));
     const selected = wordIds.flatMap((id) => byId.get(id) ?? []);
 
-    const [mission] = await db.$transaction([
-      db.dailyMission.create({
-        data: {
-          date: today,
-          wordIdsJson: JSON.stringify(wordIds),
-          personalSentencesJson: JSON.stringify({}),
-        },
-      }),
-      db.word.updateMany({
-        where: { id: { in: wordIds }, status: "nouveau" },
-        data: { status: "actif" },
-      }),
-    ]);
+    // Word status only changes when the mission is completed and reviewed.
+    const mission = await db.dailyMission.create({
+      data: {
+        date: today,
+        wordIdsJson: JSON.stringify(wordIds),
+        personalSentencesJson: JSON.stringify({}),
+      },
+    });
 
     return NextResponse.json({ words: selected, mission });
   } catch (error) {

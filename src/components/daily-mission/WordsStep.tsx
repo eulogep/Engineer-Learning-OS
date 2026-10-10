@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { BookOpen, ArrowRight } from "lucide-react";
 import { loadTodayMission } from "@/components/daily-mission/mission-gateway";
 import { vocabularyEntry } from "@/modules/daily-english/vocabulary";
+import { reviewStateFromWord } from "@/modules/daily-english/local-mission";
+import { reviewStatus } from "@/modules/daily-english/spaced-review";
 import type { WordStatus } from "@/types";
 
 const STATUS_LABEL: Record<WordStatus, { label: string; className: string }> = {
@@ -56,7 +58,9 @@ export function WordsStep() {
     void loadWords();
   }, [loadWords]);
 
-  const reviewCount = words.filter((word) => word.status !== "nouveau").length;
+  // Derived from the schedule: legacy rows marked "actif" by the former rotation are still new.
+  const statusOf = (word: (typeof words)[number]) => reviewStatus(reviewStateFromWord(word));
+  const reviewCount = words.filter((word) => statusOf(word) !== "nouveau").length;
 
   if (loading) {
     return (
@@ -88,7 +92,7 @@ export function WordsStep() {
       <div className="space-y-2">
         {words.map((word, i) => {
           const entry = vocabularyEntry(word.word);
-          const status = STATUS_LABEL[word.status] ?? STATUS_LABEL.nouveau;
+          const status = STATUS_LABEL[statusOf(word)];
           return (
             <Card
               key={word.id}

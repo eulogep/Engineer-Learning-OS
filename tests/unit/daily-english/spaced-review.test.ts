@@ -11,7 +11,7 @@ import {
   type ReviewState,
 } from "../../../src/modules/daily-english/spaced-review.ts";
 import { wordUsagePattern } from "../../../src/modules/daily-english/local-mission.ts";
-import { VOCABULARY, VOCABULARY_PACKS, vocabularyEntry } from "../../../src/modules/daily-english/vocabulary.ts";
+import { VOCABULARY, VOCABULARY_PACKS, vocabularyEntry, vocabularyRank } from "../../../src/modules/daily-english/vocabulary.ts";
 
 const NEW: ReviewState = { lastReviewedDay: null, nextReviewDay: null };
 
@@ -81,4 +81,6 @@ test("vocabulary has five packs of unique words, each example uses its word", ()
   assert.deepEqual(examplesMissingWord, []);
   assert.equal(vocabularyEntry("Firewall")?.pack, "cybersecurity");
   assert.equal(vocabularyEntry("unknown-word"), null);
+  assert.ok(vocabularyRank("embrace") < vocabularyRank("bandwidth"));
+  assert.equal(vocabularyRank("custom-word"), Number.MAX_SAFE_INTEGER);
 });
