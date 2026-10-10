@@ -244,9 +244,10 @@ src/modules/
 ## 🏷️ GitHub Topics & Discovery Tags
 
 ```text
-learning-os, local-first, deliberate-practice, document-extraction, docling,
-pdfjs, spaced-repetition, competency-tracking, technical-english, nextjs16,
-react19, typescript5, tailwindcss4, edtech-open-source, privacy-first
+learning-os, local-first, privacy-first, edtech, deliberate-practice,
+spaced-repetition, leitner-system, competency-tracking, technical-english,
+english-learning, vocabulary-builder, document-extraction, docling, pdfjs,
+nextjs, react, typescript, tailwindcss, indexeddb, cybersecurity-education
 ```
 
 ---
