@@ -12,6 +12,7 @@
 [![License MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 <p align="center">
+  <a href="#-live-demo"><b>🚀 Live Demo</b></a> •
   <a href="#-key-features">Features</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-quick-start">Quick Start</a> •
@@ -19,6 +20,22 @@
   <a href="#-interactive-roadmap">Roadmap</a> •
   <a href="#-data-privacy--safety">Privacy</a>
 </p>
+
+<a href="https://daily-english-mission-ten.vercel.app">
+  <img src="public/screenshots/dashboard.png" alt="Engineer Learning OS — Aujourd'hui dashboard" width="880" />
+</a>
+
+</div>
+
+---
+
+## 🚀 Live Demo
+
+<div align="center">
+
+### 👉 **[daily-english-mission-ten.vercel.app](https://daily-english-mission-ten.vercel.app)** 👈
+
+*No sign-up required — your learning data is stored locally in your browser (IndexedDB). Optional cloud sync only runs after you explicitly sign in.*
 
 </div>
 
@@ -76,6 +93,26 @@ Traditional e-learning platforms rely on **passive video watching**, **superfici
 - **Inspectable Decisions:** Six scientific decision records connect claims to legal sources, limitations, and measurement plans.
 - **Context-Aware Practice:** Confidence calibration, bounded assistance, semantic self-explanation, transfer evidence, and curated concept relations inform the next action.
 - **Canonical Shadow Projection:** The policy reads privacy-safe IndexedDB event metadata without rewriting EventIds or independently awarding mastery.
+
+---
+
+## 🖼️ Product Tour
+
+<div align="center">
+
+| Daily Dashboard | Learning Paths |
+|---|---|
+| ![Aujourd'hui dashboard](public/screenshots/dashboard.png) | ![Apprendre — learning paths](public/screenshots/learn.png) |
+
+| Multi-Subject Academic Space | Evidence-Based Progress |
+|---|---|
+| ![Matières — academic workspace](public/screenshots/subjects.png) | ![Progression — competency graph](public/screenshots/progress.png) |
+
+| Daily English Mission |
+|---|
+| ![Daily English Mission](public/screenshots/daily-english.png) |
+
+</div>
 
 ---
 
