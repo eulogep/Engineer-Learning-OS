@@ -3,19 +3,21 @@ import test from "node:test";
 import {
   DAILY_WORD_COUNT,
   LOCAL_STATE_KEY,
-  LOCAL_WORD_POOL,
   analyzeProduction,
   createLocalSession,
   dayKey,
   isLocalSessionId,
   loadOrCreateLocalMission,
+  localProgressSummary,
   localWordId,
+  missionReviews,
   readLocalState,
   saveLocalSession,
   selectDailyWordIds,
   updateLocalMission,
   wordUsagePattern,
 } from "../../../src/modules/daily-english/local-mission.ts";
+import { VOCABULARY } from "../../../src/modules/daily-english/vocabulary.ts";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
@@ -29,24 +31,60 @@ function memoryStorage(initial: Record<string, string> = {}) {
 let counter = 0;
 const nextId = () => `id-${++counter}`;
 
-test("rotation picks never-used words first, then the least recently used", () => {
-  const first = selectDailyWordIds(LOCAL_WORD_POOL, {});
+test("first mission mixes new words from every vocabulary pack", () => {
+  const first = selectDailyWordIds(VOCABULARY, {}, "2026-10-01");
   assert.equal(first.length, DAILY_WORD_COUNT);
-  assert.deepEqual(first, LOCAL_WORD_POOL.slice(0, 10).map((seed) => localWordId(seed.word)));
-
-  const lastUsed = Object.fromEntries(first.map((id) => [id, "2026-10-01"]));
-  const second = selectDailyWordIds(LOCAL_WORD_POOL, lastUsed);
-  assert.equal(second.some((id) => first.includes(id)), false);
+  const packs = new Set(first.map((id) => VOCABULARY.find((entry) => localWordId(entry.word) === id)?.pack));
+  assert.equal(packs.size, 5);
 });
 
-test("a full pool cycles through every word before repeating", () => {
+test("unfinished missions do not burn new words; completed ones schedule reviews", () => {
   const storage = memoryStorage();
-  const seen = new Set<string>();
-  for (let day = 1; day <= 3; day += 1) {
-    const { words } = loadOrCreateLocalMission(storage, new Date(2026, 9, day, 9), nextId);
-    words.forEach((word) => seen.add(word.id));
+  const day1 = loadOrCreateLocalMission(storage, new Date(2026, 9, 1, 9), nextId);
+  const day2 = loadOrCreateLocalMission(storage, new Date(2026, 9, 2, 9), nextId);
+  assert.deepEqual(day2.words.map((word) => word.id), day1.words.map((word) => word.id));
+
+  const sentences = Object.fromEntries(day2.words.map((word) => [word.id, `I use ${word.word} here.`]));
+  const production = day2.words.slice(0, 5).map((word) => `I like ${word.word}.`).join(" ");
+  updateLocalMission(storage, day2.mission.id, { completed: true, reviews: missionReviews(day2.words, sentences, production) }, new Date(2026, 9, 2, 20));
+
+  const day3 = loadOrCreateLocalMission(storage, new Date(2026, 9, 3, 9), nextId);
+  // Every word reviewed on day 2 is due on day 3 (first box = 1 day), but three
+  // slots stay reserved for new words; the other reviews wait for tomorrow.
+  const day2Ids = new Set(day2.words.map((word) => word.id));
+  assert.equal(day3.words.filter((word) => day2Ids.has(word.id)).length, 7);
+  assert.equal(day3.words.filter((word) => word.status === "nouveau").length, 3);
+  assert.equal(readLocalState(storage).reviews[day2.words[0].id]?.nextReviewDay, "2026-10-03");
+});
+
+test("reviews apply once and only to words of the mission", () => {
+  const storage = memoryStorage();
+  const { words, mission } = loadOrCreateLocalMission(storage, new Date(2026, 9, 5, 9), nextId);
+  const reviews = [{ wordId: words[0].id, outcome: "SUCCESS" as const }, { wordId: "local-word-not-in-mission", outcome: "SUCCESS" as const }];
+  updateLocalMission(storage, mission.id, { completed: true, reviews }, new Date(2026, 9, 5));
+  updateLocalMission(storage, mission.id, { completed: true, reviews }, new Date(2026, 9, 5));
+  const state = readLocalState(storage);
+  assert.deepEqual(state.reviews[words[0].id], { lastReviewedDay: "2026-10-05", nextReviewDay: "2026-10-06" });
+  assert.equal(state.reviews["local-word-not-in-mission"], undefined);
+});
+
+test("version 1 storage keeps its history and starts reviews fresh", () => {
+  const legacy = { version: 1, lastUsed: { "local-word-embrace": "2026-10-09" }, missions: [{ id: "local-mission-old", date: "2026-10-09T00:00:00", wordIdsJson: "[]", personalSentencesJson: "{}", speakingSessionId: null, completed: true, createdAt: "2026-10-09T08:00:00.000Z" }], sessions: [] };
+  const state = readLocalState(memoryStorage({ [LOCAL_STATE_KEY]: JSON.stringify(legacy) }));
+  assert.equal(state.version, 2);
+  assert.equal(state.missions.length, 1);
+  assert.deepEqual(state.reviews, {});
+});
+
+test("progress summary counts the streak of completed days", () => {
+  const storage = memoryStorage();
+  for (const day of [8, 9, 10]) {
+    const { mission } = loadOrCreateLocalMission(storage, new Date(2026, 9, day, 9), nextId);
+    updateLocalMission(storage, mission.id, { completed: true }, new Date(2026, 9, day, 20));
   }
-  assert.equal(seen.size, LOCAL_WORD_POOL.length);
+  assert.equal(localProgressSummary(storage, new Date(2026, 9, 10, 21)).streak, 3);
+  assert.equal(localProgressSummary(storage, new Date(2026, 9, 11, 9)).streak, 3);
+  assert.equal(localProgressSummary(storage, new Date(2026, 9, 12, 9)).streak, 0);
 });
 
 test("the same local day returns the same mission and keeps saved sentences", () => {
@@ -94,6 +132,8 @@ test("word usage detection accepts regular inflections only for the target word"
   assert.equal(wordUsagePattern("thrive").test("Teams thrived"), true);
   assert.equal(wordUsagePattern("adapt").test("we adapted quickly"), true);
   assert.equal(wordUsagePattern("adapt").test("an adapter cable"), false);
+  assert.equal(wordUsagePattern("apply").test("I applied last week"), true);
+  assert.equal(wordUsagePattern("cover letter").test("my Cover Letter is ready"), true);
 });
 
 test("local analysis fixes frequent French-speaker errors with French explanations", () => {

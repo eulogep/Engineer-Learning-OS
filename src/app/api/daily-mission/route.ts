@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { startOfDay, subDays } from "date-fns";
+import { startOfDay } from "date-fns";
+import { DAILY_WORD_COUNT, dayKey } from "@/modules/daily-english/local-mission";
+import { applyReview, isReviewOutcome, scheduleDailyWords, type ReviewState } from "@/modules/daily-english/spaced-review";
+import { vocabularyEntry } from "@/modules/daily-english/vocabulary";
+
+function reviewStateOf(word: { lastUsedAt: Date | null; nextReviewDate: Date | null }): ReviewState {
+  // Words picked by the former rotation have lastUsedAt but no schedule: treat them as new.
+  if (!word.lastUsedAt || !word.nextReviewDate) return { lastReviewedDay: null, nextReviewDay: null };
+  return { lastReviewedDay: dayKey(word.lastUsedAt), nextReviewDay: dayKey(word.nextReviewDate) };
+}
+
+function dayStart(day: string): Date {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(year, month - 1, date);
+}
 
 /** GET /api/daily-mission — fetch or create today's mission with 10 words */
 export async function GET() {
@@ -25,38 +39,18 @@ export async function GET() {
       return NextResponse.json({ words, mission: existing });
     }
 
-    // Select 10 words for rotation: prioritize words never used (lastUsedAt
-    // null) or least-recently-used, so a fixed pool of N words naturally
-    // cycles through everyone every ceil(N/10) days instead of always
-    // returning the same first 10 by createdAt (the previous behavior —
-    // status was never advanced past "nouveau" anywhere, so that filter
-    // alone never rotated anything).
-    // Tie-break by createdAt for determinism when lastUsedAt is equal (e.g.
-    // multiple nulls on day one).
-    const candidates = await db.word.findMany({
-      where: {
-        status: { in: ["nouveau", "actif"] },
-      },
-      orderBy: [{ lastUsedAt: "asc" }, { createdAt: "asc" }],
-    });
+    // Spaced review: due words first, then new words interleaved across
+    // vocabulary packs. lastUsedAt / nextReviewDate are only written when the
+    // mission is completed (see PATCH), so an unfinished day is simply retried.
+    const all = await db.word.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+    const wordIds = scheduleDailyWords(
+      all.map((word) => ({ id: word.id, group: vocabularyEntry(word.word)?.pack ?? "custom", review: reviewStateOf(word) })),
+      dayKey(today),
+      DAILY_WORD_COUNT,
+    );
+    const byId = new Map(all.map((word) => [word.id, word]));
+    const selected = wordIds.flatMap((id) => byId.get(id) ?? []);
 
-    if (candidates.length < 10) {
-      // Fallback: include maitrise words if not enough
-      const more = await db.word.findMany({
-        where: { id: { notIn: candidates.map((w) => w.id) } },
-        orderBy: [{ lastUsedAt: "asc" }, { createdAt: "asc" }],
-        take: 10 - candidates.length,
-      });
-      candidates.push(...more);
-    }
-
-    // Pick 10 (or all if fewer)
-    const selected = candidates.slice(0, 10);
-    const wordIds = selected.map((w) => w.id);
-
-    // Create the daily mission, and mark the selected words as used today
-    // (lastUsedAt) + advance "nouveau" -> "actif" so they drop out of the
-    // front of the rotation queue for the next few days.
     const [mission] = await db.$transaction([
       db.dailyMission.create({
         data: {
@@ -64,10 +58,6 @@ export async function GET() {
           wordIdsJson: JSON.stringify(wordIds),
           personalSentencesJson: JSON.stringify({}),
         },
-      }),
-      db.word.updateMany({
-        where: { id: { in: wordIds } },
-        data: { lastUsedAt: today },
       }),
       db.word.updateMany({
         where: { id: { in: wordIds }, status: "nouveau" },
@@ -89,7 +79,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { missionId, personalSentences, speakingSessionId, completed } = body;
+    const { missionId, personalSentences, speakingSessionId, completed, reviews } = body;
 
     if (!missionId) {
       return NextResponse.json(
@@ -109,10 +99,36 @@ export async function PATCH(request: Request) {
       updateData.completed = completed;
     }
 
+    const current = await db.dailyMission.findUnique({ where: { id: missionId } });
+    if (!current) {
+      return NextResponse.json({ error: "Mission not found" }, { status: 404 });
+    }
+
     const mission = await db.dailyMission.update({
       where: { id: missionId },
       data: updateData,
     });
+
+    // Apply spaced-review outcomes once, on first completion, and only to the
+    // words that actually belong to this mission.
+    if (completed === true && !current.completed && Array.isArray(reviews)) {
+      const allowed = new Set<string>(JSON.parse(current.wordIdsJson));
+      const valid = reviews.filter((review: unknown): review is { wordId: string; outcome: "SUCCESS" | "PARTIAL" | "FAIL" } =>
+        typeof review === "object" && review !== null
+        && typeof (review as { wordId?: unknown }).wordId === "string"
+        && allowed.has((review as { wordId: string }).wordId)
+        && isReviewOutcome((review as { outcome?: unknown }).outcome));
+      const words = await db.word.findMany({ where: { id: { in: valid.map((review) => review.wordId) } } });
+      const today = dayKey(new Date());
+      await db.$transaction(words.map((word) => {
+        const outcome = valid.find((review) => review.wordId === word.id)!.outcome;
+        const next = applyReview(reviewStateOf(word), outcome, today);
+        return db.word.update({
+          where: { id: word.id },
+          data: { status: next.status, lastUsedAt: dayStart(next.lastReviewedDay), nextReviewDate: dayStart(next.nextReviewDay) },
+        });
+      }));
+    }
 
     return NextResponse.json({ mission });
   } catch (error) {

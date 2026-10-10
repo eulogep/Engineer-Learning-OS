@@ -1,4 +1,6 @@
 import type { DailyMission, FeedbackError, ParsedFeedback, SpeakingSession, Word } from "@/types";
+import { VOCABULARY, type VocabularyWord } from "./vocabulary";
+import { applyReview, isReviewed, reviewOutcomes, reviewStatus, scheduleDailyWords, type DayKey, type ReviewOutcome, type ReviewState } from "./spaced-review";
 
 /**
  * Local-first Daily English Mission: runs entirely in the browser when the
@@ -10,46 +12,10 @@ export const DAILY_WORD_COUNT = 10;
 export const LOCAL_STATE_KEY = "engineer-learning-os:daily-english:v1";
 const MAX_STORED_MISSIONS = 60;
 
-type WordSeed = Readonly<{ word: string; translation: string; category: string }>;
-
-/** Same generic vocabulary as `prisma/seed.ts`, so both modes share one pool. */
-export const LOCAL_WORD_POOL: readonly WordSeed[] = Object.freeze([
-  { word: "embrace", translation: "accepter / serrer", category: "verbe" },
-  { word: "resilient", translation: "résilient", category: "adjectif" },
-  { word: "perspective", translation: "perspective / point de vue", category: "nom" },
-  { word: "overcome", translation: "surmonter", category: "verbe" },
-  { word: "genuine", translation: "authentique / sincère", category: "adjectif" },
-  { word: "thrive", translation: "s'épanouir / prospérer", category: "verbe" },
-  { word: "subtle", translation: "subtil", category: "adjectif" },
-  { word: "acknowledge", translation: "reconnaître / admettre", category: "verbe" },
-  { word: "meaningful", translation: "significatif / plein de sens", category: "adjectif" },
-  { word: "approach", translation: "approche / aborder", category: "verbe" },
-  { word: "reflection", translation: "réflexion / reflet", category: "nom" },
-  { word: "collaborate", translation: "collaborer", category: "verbe" },
-  { word: "challenge", translation: "défi / mettre au défi", category: "nom" },
-  { word: "inspire", translation: "inspirer", category: "verbe" },
-  { word: "curiosity", translation: "curiosité", category: "nom" },
-  { word: "adapt", translation: "s'adapter", category: "verbe" },
-  { word: "empathy", translation: "empathie", category: "nom" },
-  { word: "progress", translation: "progrès / progresser", category: "nom" },
-  { word: "accomplish", translation: "accomplir / réaliser", category: "verbe" },
-  { word: "insight", translation: "perspicacité / aperçu", category: "nom" },
-  { word: "determination", translation: "détermination", category: "nom" },
-  { word: "gratitude", translation: "gratitude / reconnaissance", category: "nom" },
-  { word: "influence", translation: "influence / influencer", category: "nom" },
-  { word: "explore", translation: "explorer", category: "verbe" },
-  { word: "significant", translation: "significatif / important", category: "adjectif" },
-  { word: "struggle", translation: "lutte / lutter", category: "verbe" },
-  { word: "transform", translation: "transformer", category: "verbe" },
-  { word: "opportunity", translation: "opportunité", category: "nom" },
-  { word: "contribute", translation: "contribuer", category: "verbe" },
-  { word: "intention", translation: "intention", category: "nom" },
-]);
-
 export type LocalMissionState = Readonly<{
-  version: 1;
-  /** wordId → day key (YYYY-MM-DD) of the last mission that used it. */
-  lastUsed: Readonly<Record<string, string>>;
+  version: 2;
+  /** wordId → spaced-review schedule. Absent = never reviewed. */
+  reviews: Readonly<Record<string, ReviewState>>;
   missions: readonly DailyMission[];
   sessions: readonly SpeakingSession[];
 }>;
@@ -62,53 +28,65 @@ export type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
  */
 export type MissionPersistence = "server" | "browser";
 
-const EMPTY_STATE: LocalMissionState = Object.freeze({ version: 1, lastUsed: {}, missions: [], sessions: [] });
+export type WordReview = Readonly<{ wordId: string; outcome: ReviewOutcome }>;
+
+const EMPTY_STATE: LocalMissionState = Object.freeze({ version: 2, reviews: {}, missions: [], sessions: [] });
+const NEVER_REVIEWED: ReviewState = Object.freeze({ lastReviewedDay: null, nextReviewDay: null });
 
 export function localWordId(word: string): string {
-  return `local-word-${word}`;
+  return `local-word-${word.toLowerCase().replace(/\s+/g, "-")}`;
 }
 
 /** Calendar day in the learner's own timezone, so a mission lasts a local day. */
-export function dayKey(date: Date): string {
+export function dayKey(date: Date): DayKey {
   const pad = (value: number) => value.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-function toWord(seed: WordSeed, lastUsedAt: string | null): Word {
+function toWord(entry: VocabularyWord, review: ReviewState): Word {
   return {
-    id: localWordId(seed.word),
-    word: seed.word,
-    translation: seed.translation,
-    category: seed.category,
+    id: localWordId(entry.word),
+    word: entry.word,
+    translation: entry.translation,
+    category: entry.category,
     personalSentence: null,
     mentalImage: null,
     emotion: null,
-    status: lastUsedAt ? "actif" : "nouveau",
-    nextReviewDate: null,
-    lastUsedAt,
+    status: reviewStatus(review),
+    nextReviewDate: review.nextReviewDay,
+    lastUsedAt: review.lastReviewedDay,
     createdAt: "2026-01-01T00:00:00.000Z",
   };
 }
 
-/**
- * Least-recently-used rotation: never-used words first (pool order), then the
- * oldest ones. A pool of N words cycles completely every ceil(N / count) days.
- */
-export function selectDailyWordIds(pool: readonly WordSeed[], lastUsed: Readonly<Record<string, string>>, count = DAILY_WORD_COUNT): string[] {
-  return pool
-    .map((seed, index) => ({ id: localWordId(seed.word), used: lastUsed[localWordId(seed.word)] ?? "", index }))
-    .sort((a, b) => (a.used === b.used ? a.index - b.index : a.used < b.used ? -1 : 1))
-    .slice(0, count)
-    .map((entry) => entry.id);
+/** Today's word ids: due reviews first, then new words interleaved across packs. */
+export function selectDailyWordIds(
+  pool: readonly VocabularyWord[],
+  reviews: Readonly<Record<string, ReviewState>>,
+  today: DayKey,
+  count = DAILY_WORD_COUNT,
+): string[] {
+  return scheduleDailyWords(
+    pool.map((entry) => ({ id: localWordId(entry.word), group: entry.pack, review: reviews[localWordId(entry.word)] ?? NEVER_REVIEWED })),
+    today,
+    count,
+  );
+}
+
+function validReviews(value: unknown): value is Record<string, ReviewState> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function readLocalState(storage: KeyValueStorage | null): LocalMissionState {
   if (!storage) return EMPTY_STATE;
   try {
-    const parsed = JSON.parse(storage.getItem(LOCAL_STATE_KEY) ?? "null") as Partial<LocalMissionState> | null;
-    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.missions) || !Array.isArray(parsed.sessions)
-      || typeof parsed.lastUsed !== "object" || parsed.lastUsed === null) return EMPTY_STATE;
-    return { version: 1, lastUsed: parsed.lastUsed, missions: parsed.missions, sessions: parsed.sessions };
+    const parsed = JSON.parse(storage.getItem(LOCAL_STATE_KEY) ?? "null") as Record<string, unknown> | null;
+    if (!parsed || !Array.isArray(parsed.missions) || !Array.isArray(parsed.sessions)) return EMPTY_STATE;
+    const base = { missions: parsed.missions as DailyMission[], sessions: parsed.sessions as SpeakingSession[] };
+    // v1 only tracked rotation (no review outcome): keep history, start reviews fresh.
+    if (parsed.version === 1) return { version: 2, reviews: {}, ...base };
+    if (parsed.version !== 2 || !validReviews(parsed.reviews)) return EMPTY_STATE;
+    return { version: 2, reviews: parsed.reviews, ...base };
   } catch {
     return EMPTY_STATE;
   }
@@ -128,25 +106,24 @@ export function writeLocalState(storage: KeyValueStorage | null, state: LocalMis
   }
 }
 
-function wordsFor(ids: readonly string[], lastUsed: Readonly<Record<string, string>>): Word[] {
-  const byId = new Map(LOCAL_WORD_POOL.map((seed) => [localWordId(seed.word), seed]));
+function wordsFor(ids: readonly string[], reviews: Readonly<Record<string, ReviewState>>): Word[] {
+  const byId = new Map(VOCABULARY.map((entry) => [localWordId(entry.word), entry]));
   return ids.flatMap((id) => {
-    const seed = byId.get(id);
-    return seed ? [toWord(seed, lastUsed[id] ?? null)] : [];
+    const entry = byId.get(id);
+    return entry ? [toWord(entry, reviews[id] ?? NEVER_REVIEWED)] : [];
   });
 }
 
-/** Returns today's mission, creating it (and advancing the rotation) on first call of the day. */
+/** Returns today's mission, creating it on first call of the day. */
 export function loadOrCreateLocalMission(storage: KeyValueStorage | null, now: Date, createId: () => string): { words: Word[]; mission: DailyMission } {
   const state = readLocalState(storage);
   const today = dayKey(now);
   const existing = state.missions.find((mission) => typeof mission.date === "string" && mission.date.startsWith(today));
   if (existing) {
-    return { words: wordsFor(JSON.parse(existing.wordIdsJson) as string[], state.lastUsed), mission: existing };
+    return { words: wordsFor(JSON.parse(existing.wordIdsJson) as string[], state.reviews), mission: existing };
   }
 
-  const wordIds = selectDailyWordIds(LOCAL_WORD_POOL, state.lastUsed);
-  const timestamp = now.toISOString();
+  const wordIds = selectDailyWordIds(VOCABULARY, state.reviews, today);
   const mission: DailyMission = {
     id: `local-mission-${createId()}`,
     date: `${today}T00:00:00`,
@@ -154,18 +131,17 @@ export function loadOrCreateLocalMission(storage: KeyValueStorage | null, now: D
     personalSentencesJson: "{}",
     speakingSessionId: null,
     completed: false,
-    createdAt: timestamp,
+    createdAt: now.toISOString(),
   };
-  const words = wordsFor(wordIds, state.lastUsed);
-  const lastUsed = { ...state.lastUsed, ...Object.fromEntries(wordIds.map((id) => [id, today])) };
-  writeLocalState(storage, { ...state, lastUsed, missions: [...state.missions, mission] });
-  return { words, mission };
+  writeLocalState(storage, { ...state, missions: [...state.missions, mission] });
+  return { words: wordsFor(wordIds, state.reviews), mission };
 }
 
 export function updateLocalMission(
   storage: KeyValueStorage | null,
   missionId: string,
-  patch: Readonly<{ personalSentences?: Record<string, string>; speakingSessionId?: string; completed?: boolean }>,
+  patch: Readonly<{ personalSentences?: Record<string, string>; speakingSessionId?: string; completed?: boolean; reviews?: readonly WordReview[] }>,
+  now: Date = new Date(),
 ): DailyMission {
   const state = readLocalState(storage);
   const current = state.missions.find((mission) => mission.id === missionId);
@@ -176,8 +152,64 @@ export function updateLocalMission(
     ...(patch.speakingSessionId !== undefined ? { speakingSessionId: patch.speakingSessionId } : {}),
     ...(patch.completed !== undefined ? { completed: patch.completed } : {}),
   };
-  writeLocalState(storage, { ...state, missions: state.missions.map((mission) => (mission.id === missionId ? updated : mission)) });
+
+  // Reviews are applied once, when the mission is first completed.
+  let reviews = state.reviews;
+  if (patch.completed && !current.completed && patch.reviews) {
+    const allowed = new Set(JSON.parse(current.wordIdsJson) as string[]);
+    const today = dayKey(now);
+    const next: Record<string, ReviewState> = { ...state.reviews };
+    for (const review of patch.reviews) {
+      if (!allowed.has(review.wordId)) continue;
+      const { lastReviewedDay, nextReviewDay } = applyReview(state.reviews[review.wordId] ?? NEVER_REVIEWED, review.outcome, today);
+      next[review.wordId] = { lastReviewedDay, nextReviewDay };
+    }
+    reviews = next;
+  }
+
+  writeLocalState(storage, { ...state, reviews, missions: state.missions.map((mission) => (mission.id === missionId ? updated : mission)) });
   return updated;
+}
+
+function toDayKey(value: Date | string | null): DayKey | null {
+  if (value === null) return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? dayKey(date) : null;
+}
+
+/** Review schedule carried by a word row, whichever mode produced it. */
+export function reviewStateFromWord(word: Pick<Word, "lastUsedAt" | "nextReviewDate">): ReviewState {
+  const lastReviewedDay = toDayKey(word.lastUsedAt);
+  const nextReviewDay = toDayKey(word.nextReviewDate);
+  return lastReviewedDay && nextReviewDay ? { lastReviewedDay, nextReviewDay } : NEVER_REVIEWED;
+}
+
+/** Outcome of each word of the mission, from the sentences and the oral production. */
+export function missionReviews(words: readonly Pick<Word, "id" | "word">[], personalSentences: Readonly<Record<string, string>>, production: string): WordReview[] {
+  return reviewOutcomes(words, personalSentences, production, (word, text) => wordUsagePattern(word).test(text));
+}
+
+export type LocalProgressSummary = Readonly<{ seen: number; mastered: number; total: number; streak: number }>;
+
+/** Consecutive completed days ending today (or yesterday, if today is not done yet). */
+export function localProgressSummary(storage: KeyValueStorage | null, now: Date): LocalProgressSummary {
+  const state = readLocalState(storage);
+  const reviewed = Object.values(state.reviews).filter(isReviewed);
+  const completedDays = new Set(state.missions.filter((mission) => mission.completed).map((mission) => String(mission.date).slice(0, 10)));
+  const cursor = new Date(now);
+  if (!completedDays.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
+  while (completedDays.has(dayKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return {
+    seen: reviewed.length,
+    mastered: reviewed.filter((review) => reviewStatus(review) === "maitrise").length,
+    total: VOCABULARY.length,
+    streak,
+  };
 }
 
 export function saveLocalSession(storage: KeyValueStorage | null, session: SpeakingSession): SpeakingSession {
@@ -242,8 +274,11 @@ function escapeRegExp(value: string): string {
 /** Matches the base form and its regular inflections (embrace → embraces, embraced, embracing). */
 export function wordUsagePattern(word: string): RegExp {
   const base = escapeRegExp(word.toLowerCase());
-  const stem = word.toLowerCase().endsWith("e") ? escapeRegExp(word.toLowerCase().slice(0, -1)) : base;
-  return new RegExp(`\\b(?:${base}(?:s|es|d|ed|ly)?|${stem}(?:ing|ed|es|ion)|${base}ing)\\b`, "i");
+  const lower = word.toLowerCase();
+  const stem = lower.endsWith("e") ? escapeRegExp(lower.slice(0, -1)) : base;
+  // apply → applies, applied; but not play → plaied
+  const yForms = /[^aeiou]y$/.test(lower) ? `|${escapeRegExp(lower.slice(0, -1))}(?:ies|ied)` : "";
+  return new RegExp(`\\b(?:${base}(?:s|es|d|ed|ly)?|${stem}(?:ing|ed|es|ion)|${base}ing${yForms})\\b`, "i");
 }
 
 function capitalizeSentences(text: string): string {

@@ -4,13 +4,16 @@ import type { DailyMission, SpeakingSession, Word } from "@/types";
 import {
   createLocalSession,
   loadOrCreateLocalMission,
+  localProgressSummary,
   saveLocalSession,
   updateLocalMission,
   type KeyValueStorage,
   type MissionPersistence,
+  type LocalProgressSummary,
+  type WordReview,
 } from "@/modules/daily-english/local-mission";
 
-type MissionPatch = { personalSentences?: Record<string, string>; speakingSessionId?: string; completed?: boolean };
+type MissionPatch = { personalSentences?: Record<string, string>; speakingSessionId?: string; completed?: boolean; reviews?: readonly WordReview[] };
 
 function browserStorage(): KeyValueStorage | null {
   try {
@@ -58,4 +61,8 @@ export function startLocalSession(transcription: string, durationSeconds: number
 
 export function storeLocalSession(session: SpeakingSession): SpeakingSession {
   return saveLocalSession(browserStorage(), session);
+}
+
+export function browserProgressSummary(): LocalProgressSummary {
+  return localProgressSummary(browserStorage(), new Date());
 }
