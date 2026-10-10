@@ -6,20 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, ArrowRight } from "lucide-react";
-
-async function fetchDailyMission() {
-  const res = await fetch("/api/daily-mission");
-  if (!res.ok) {
-    throw new Error("Impossible de charger les mots du jour");
-  }
-  return res.json() as Promise<{
-    words: import("@/types").Word[];
-    mission: import("@/types").DailyMission;
-  }>;
-}
+import { loadTodayMission } from "@/components/daily-mission/mission-gateway";
 
 export function WordsStep() {
-  const { words, setWords, setMission, setPersonalSentence, setStep, setError } = useMissionStore();
+  const { words, setWords, setMission, setPersistence, setPersonalSentence, setStep, setError } = useMissionStore();
   const [loading, setLoading] = useState(words.length === 0);
   const fetchedRef = useRef(false);
 
@@ -31,7 +21,8 @@ export function WordsStep() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchDailyMission();
+      const data = await loadTodayMission();
+      setPersistence(data.persistence);
       setWords(data.words);
       setMission(data.mission);
       // Restore saved personal sentences from the mission
@@ -51,7 +42,7 @@ export function WordsStep() {
     } finally {
       setLoading(false);
     }
-  }, [words.length, setWords, setMission, setError]);
+  }, [words.length, setWords, setMission, setPersistence, setPersonalSentence, setError]);
 
   useEffect(() => {
     void loadWords();

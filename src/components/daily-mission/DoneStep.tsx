@@ -13,11 +13,13 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
+import { updateMission } from "@/components/daily-mission/mission-gateway";
 
 export function DoneStep() {
   const {
     words,
     mission,
+    persistence,
     speakingSession,
     feedback,
     correctedText,
@@ -48,25 +50,10 @@ export function DoneStep() {
     setSaving(true);
 
     try {
-      const res = await fetch("/api/daily-mission", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          missionId: mission.id,
-          speakingSessionId: speakingSession.id,
-          completed: true,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Erreur de finalisation");
-      }
-
-      const data = await res.json();
-      if (data.mission) {
-        setMission(data.mission);
-      }
+      setMission(await updateMission(persistence, mission.id, {
+        speakingSessionId: speakingSession.id,
+        completed: true,
+      }));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Erreur de finalisation"
@@ -75,7 +62,7 @@ export function DoneStep() {
     } finally {
       setSaving(false);
     }
-  }, [mission, speakingSession, completed, setError, setMission]);
+  }, [mission, persistence, speakingSession, completed, setError, setMission]);
 
   useEffect(() => {
     void finalizeMission();

@@ -7,13 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, ArrowLeft, PenLine } from "lucide-react";
+import { updateMission } from "@/components/daily-mission/mission-gateway";
 
 export function SentencesStep() {
   const {
     words,
     mission,
+    persistence,
     personalSentences,
     setPersonalSentence,
+    setMission,
     setStep,
     setError,
   } = useMissionStore();
@@ -31,18 +34,7 @@ export function SentencesStep() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/daily-mission", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          missionId: mission.id,
-          personalSentences,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Impossible de sauvegarder les phrases");
-      }
+      setMission(await updateMission(persistence, mission.id, { personalSentences }));
 
       setStep("speaking");
     } catch (err) {
