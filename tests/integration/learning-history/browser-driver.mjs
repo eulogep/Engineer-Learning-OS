@@ -97,14 +97,15 @@ export async function createBrowserHarness(errorTypes) {
     let launchError;
     browser.on("error", (error) => { launchError = error; });
     let endpoint;
-    for (let i = 0; i < 200; i++) {
+    // Up to 30 s: CI runners start several Chrome instances in parallel.
+    for (let i = 0; i < 600; i++) {
       if (launchError) throw launchError;
       try {
         const [port, route] = (await readFile(path.join(temp, "profile/DevToolsActivePort"), "utf8")).trim().split("\n");
         endpoint = "ws://127.0.0.1:" + port + route; break;
       } catch { await wait(50); }
     }
-    if (!endpoint) throw new Error("Fresh headless Chrome did not start within ten seconds.");
+    if (!endpoint) throw new Error("Fresh headless Chrome did not start within thirty seconds.");
     const socket = new WebSocket(endpoint);
     await new Promise((resolve, reject) => { socket.addEventListener("open", resolve, { once: true }); socket.addEventListener("error", reject, { once: true }); });
     cdp = new DevTools(socket);
