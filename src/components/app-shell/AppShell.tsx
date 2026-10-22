@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, BookMarked, BookOpenCheck, CalendarDays, CalendarRange, DatabaseBackup, FileCheck2, GraduationCap, Languages, LibraryBig, RotateCcw, Sparkles } from "lucide-react";
+import { BarChart3, BookMarked, BookOpenCheck, Brain, CalendarDays, CalendarRange, DatabaseBackup, FileCheck2, GraduationCap, Languages, LibraryBig, RotateCcw, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LearningRecordBridge } from "@/components/learning-records/LearningRecordBridge";
 import { ReviewRecordBridge } from "@/components/review-engine/ReviewRecordBridge";
@@ -18,6 +18,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 const navItems: NavItem[] = [
   { href: "/", label: "Aujourd’hui", icon: CalendarDays },
   { href: "/learn", label: "Apprendre", icon: BookOpenCheck },
+  { href: "/studio", label: "Studio", icon: Brain },
   { href: "/review", label: "Réviser", icon: RotateCcw },
   { href: "/subjects", label: "Matières", icon: LibraryBig },
   { href: "/semester", label: "Semestre", icon: CalendarRange },

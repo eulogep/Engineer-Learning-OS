@@ -1,5 +1,6 @@
-// Copies the ONNX Runtime WebAssembly build used by @huggingface/transformers into
-// public/vendor/ort, so on-device speech recognition never loads code from a CDN.
+// Copies browser runtimes into public/vendor so nothing is loaded from a CDN:
+// - the ONNX Runtime WebAssembly build used by @huggingface/transformers (speech recognition);
+// - the pdf.js worker used to read imported PDFs in the Learning Studio.
 // Generated files are git-ignored; this runs before `next dev` and `next build`.
 import { copyFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -14,3 +15,9 @@ for (const file of ["ort-wasm-simd-threaded.asyncify.mjs", "ort-wasm-simd-thread
   copyFileSync(path.join(ortDist, file), path.join(out, file));
 }
 console.log("ONNX Runtime (web) copied to public/vendor/ort");
+
+const pdfjsBuild = path.join(path.dirname(require.resolve("pdfjs-dist/package.json")), "legacy", "build");
+const pdfOut = path.resolve("public/vendor/pdfjs");
+mkdirSync(pdfOut, { recursive: true });
+copyFileSync(path.join(pdfjsBuild, "pdf.worker.min.mjs"), path.join(pdfOut, "pdf.worker.min.mjs"));
+console.log("pdf.js worker copied to public/vendor/pdfjs");
