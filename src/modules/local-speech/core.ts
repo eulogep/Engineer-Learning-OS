@@ -77,6 +77,25 @@ function tokens(text: string): string[] {
   return text.toLowerCase().replace(/[’`]/g, "'").match(/[a-z0-9]+(?:'[a-z]+)?/g) ?? [];
 }
 
+/** Longest-common-subsequence alignment: true for each expected token matched in order in `heard`. */
+function einsteinAlignment(expected: readonly string[], heard: readonly string[]): boolean[] {
+  const table = Array.from({ length: expected.length + 1 }, () => new Uint16Array(heard.length + 1));
+  for (let i = expected.length - 1; i >= 0; i -= 1) {
+    for (let j = heard.length - 1; j >= 0; j -= 1) {
+      table[i][j] = expected[i] && expected[i] === heard[j]
+        ? table[i + 1][j + 1] + 1
+        : Math.max(table[i + 1][j], table[i][j + 1]);
+    }
+  }
+  const matched = new Array<boolean>(expected.length).fill(false);
+  for (let i = 0, j = 0; i < expected.length && j < heard.length;) {
+    if (expected[i] && expected[i] === heard[j]) { matched[i] = true; i += 1; j += 1; }
+    else if (table[i + 1][j] >= table[i][j + 1]) i += 1;
+    else j += 1;
+  }
+  return matched;
+}
+
 /**
  * Word-level comparison of the text the learner had to read and what Whisper heard
  * (longest common subsequence, so one skipped word does not shift everything after it).
@@ -86,23 +105,7 @@ export function compareReading(expected: string, heard: string): ReadingComparis
   const expectedTokens = displayWords.map((word) => tokens(word).join(""));
   const heardTokens = tokens(heard);
 
-  const rows = expectedTokens.length + 1;
-  const cols = heardTokens.length + 1;
-  const table = Array.from({ length: rows }, () => new Uint16Array(cols));
-  for (let i = expectedTokens.length - 1; i >= 0; i -= 1) {
-    for (let j = heardTokens.length - 1; j >= 0; j -= 1) {
-      table[i][j] = expectedTokens[i] && expectedTokens[i] === heardTokens[j]
-        ? table[i + 1][j + 1] + 1
-        : Math.max(table[i + 1][j], table[i][j + 1]);
-    }
-  }
-
-  const heardFlags = new Array<boolean>(expectedTokens.length).fill(false);
-  for (let i = 0, j = 0; i < expectedTokens.length && j < heardTokens.length;) {
-    if (expectedTokens[i] && expectedTokens[i] === heardTokens[j]) { heardFlags[i] = true; i += 1; j += 1; }
-    else if (table[i + 1][j] >= table[i][j + 1]) i += 1;
-    else j += 1;
-  }
+  const heardFlags = einsteinAlignment(expectedTokens, heardTokens);
 
   // Punctuation-only "words" do not count either way.
   const counted = expectedTokens.map((token) => token.length > 0);
