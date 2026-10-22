@@ -83,6 +83,7 @@ Traditional e-learning platforms rely on **passive video watching**, **superfici
 ### 🎙️ 4. Technical English in the Loop (`technical-english`)
 - **Microphone & Audio Store:** In-browser audio recording with local blob persistence.
 - **Concise Feedback:** Provides tightly bounded lexical and grammatical feedback (capped at 3 actionable points) without hallucinating progress.
+- **On-Device Speech Recognition (opt-in):** Whisper runs inside the browser (WebAssembly) to transcribe your spoken English and score your pronunciation word by word. Your voice is never uploaded; the only network access is a one-time ~80 MB download of the open-source model from Hugging Face.
 
 ### 🏭 5. Industrial Problem Scenarios (`professional-scenarios`)
 - **Realistic Workplace Cases:** Scenario solving based on synthetic industrial telemetry data.

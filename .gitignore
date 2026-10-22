@@ -141,3 +141,6 @@ _tes_extract_tmp/
 /skill*/
 /worklog.md
 /TES-*.zip
+
+# Generated at build time by scripts/vendor-ort.mjs
+/public/vendor/ort/
