@@ -9,7 +9,8 @@
 export type StudioDocType = "COURS" | "TD" | "TP" | "TRANSCRIPTION";
 
 export type StudioPassage = Readonly<{ id: string; text: string }>;
-export type StudioPage = Readonly<{ pageNumber: number; passages: readonly StudioPassage[] }>;
+/** `ocr`: text recognised from the page image on this device — may contain recognition errors. */
+export type StudioPage = Readonly<{ pageNumber: number; passages: readonly StudioPassage[]; ocr?: boolean }>;
 
 export type StudioDocument = Readonly<{
   academicSource?: Readonly<{

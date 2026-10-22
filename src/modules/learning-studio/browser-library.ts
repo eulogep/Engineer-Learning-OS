@@ -1,6 +1,7 @@
 "use client";
 
-import { ImportError, MAX_IMPORT_BYTES, MAX_IMPORT_PAGES, buildImportedDocument, importFormat, originalFileIdentity, textToSections, type ImportMetadata, type RawPage } from "./import";
+import { ImportError, MAX_IMPORT_BYTES, MAX_IMPORT_PAGES, OcrAvailableError, buildImportedDocument, importFormat, originalFileIdentity, pagesNeedingOcr, textToSections, type ImportMetadata, type RawPage } from "./import";
+import { recognizePages, type OcrProgress } from "./browser-ocr";
 import type { StudioDocument } from "./types";
 import type { AcademicSourceIndex, AcademicSourceIndexEntry } from "../academic-workspace/types";
 import { bindAcademicSource, parseLocalCatalogue, sourceImportAllowed } from "./academic-catalogue";
@@ -103,7 +104,9 @@ export async function deleteImportedDocument(id: string): Promise<void> {
   } finally { db.close(); }
 }
 
-async function readPdfPages(bytes: Uint8Array): Promise<RawPage[]> {
+export type ImportOptions = Readonly<{ ocr?: boolean; onOcrProgress?: (progress: OcrProgress) => void }>;
+
+async function readPdfPages(bytes: Uint8Array, options: ImportOptions = {}): Promise<RawPage[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.mjs";
   const task = pdfjs.getDocument({ data: bytes, useSystemFonts: true });
@@ -117,14 +120,21 @@ async function readPdfPages(bytes: Uint8Array): Promise<RawPage[]> {
       for (const item of content.items) if ("str" in item) text += item.str + (item.hasEOL ? "\n" : " ");
       pages.push({ pageNumber, text });
     }
-    return pages;
+    const missing = pagesNeedingOcr(pages);
+    if (missing.length === 0) return pages;
+    if (!options.ocr) {
+      if (missing.length === pages.length) throw new OcrAvailableError(pages.length);
+      return pages; // mixed PDF: the readable pages are kept as they are
+    }
+    const recognized = await recognizePages((pageNumber) => pdf.getPage(pageNumber), missing, options.onOcrProgress);
+    return pages.map((page) => (recognized.has(page.pageNumber) ? { pageNumber: page.pageNumber, text: recognized.get(page.pageNumber) ?? "", ocr: true } : page));
   } finally {
     await task.destroy();
   }
 }
 
 /** Reads a PDF, Markdown or text file entirely in the browser and stores it locally. */
-export async function importFile(file: File, metadata: ImportMetadata, source?: AcademicSourceIndexEntry): Promise<StudioDocument> {
+export async function importFile(file: File, metadata: ImportMetadata, source?: AcademicSourceIndexEntry, options: ImportOptions = {}): Promise<StudioDocument> {
   if (source && !sourceImportAllowed(source)) throw new ImportError("Classification interdite dans le Studio académique.");
   const format = importFormat(file.name);
   if (!format) throw new ImportError("Format non pris en charge : PDF, Markdown (.md) ou texte (.txt).");
@@ -140,7 +150,7 @@ export async function importFile(file: File, metadata: ImportMetadata, source?: 
   if (format === "PDF") {
     let pages: RawPage[];
     try {
-      pages = await readPdfPages(new Uint8Array(bytes));
+      pages = await readPdfPages(new Uint8Array(bytes), options);
     } catch (error) {
       if (error instanceof ImportError) throw error;
       throw new ImportError("Ce PDF n’a pas pu être lu (fichier protégé ou endommagé).");
@@ -151,7 +161,7 @@ export async function importFile(file: File, metadata: ImportMetadata, source?: 
   }
   document = { ...document, provenance: {
     sourceId: identity.id, sha256: identity.sha256, originalFileName: file.name,
-    extractionMethod: format === "PDF" ? "PDFJS_DIST_LOCAL" : "PLAIN_TEXT_LOCAL",
+    extractionMethod: format !== "PDF" ? "PLAIN_TEXT_LOCAL" : document.pages.some((page) => page.ocr) ? "PDFJS_DIST_LOCAL+TESSERACT_OCR_LOCAL" : "PDFJS_DIST_LOCAL",
     artifactRole: "DERIVED", originalRole: "ORIGINAL_SOURCE",
   } };
   if (source) document = bindAcademicSource(document, source);

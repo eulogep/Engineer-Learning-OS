@@ -231,7 +231,7 @@ export function LearningStudio() {
             <CardContent ref={viewer} className="max-h-[28rem] space-y-3 overflow-y-auto">
               {openDocument.pages.map((page) => (
                 <section key={page.pageNumber} aria-label={`Page ${page.pageNumber}`} className="space-y-1.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{openDocument.unit === "section" ? "Section" : "Page"} {page.pageNumber}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{openDocument.unit === "section" ? "Section" : "Page"} {page.pageNumber}{page.ocr && <span className="ml-2 rounded bg-amber-100 px-1 normal-case tracking-normal text-amber-900">texte reconnu par OCR · à vérifier</span>}</p>
                   {page.passages.map((passage) => {
                     const focused = focus?.documentId === openDocument.id && focus.pageNumber === page.pageNumber && focus.passageId === passage.id;
                     return <p key={passage.id} data-passage={`${openDocument.id}:${page.pageNumber}:${passage.id}`}
