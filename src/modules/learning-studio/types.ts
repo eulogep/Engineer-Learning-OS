@@ -9,9 +9,18 @@
 export type StudioDocType = "COURS" | "TD" | "TP" | "TRANSCRIPTION";
 
 export type StudioPassage = Readonly<{ id: string; text: string }>;
-export type StudioPage = Readonly<{ pageNumber: number; passages: readonly StudioPassage[] }>;
+/** `ocr`: text recognised from the page image on this device — may contain recognition errors. */
+export type StudioPage = Readonly<{ pageNumber: number; passages: readonly StudioPassage[]; ocr?: boolean }>;
 
 export type StudioDocument = Readonly<{
+  academicSource?: Readonly<{
+    id: string;
+    path: string;
+    sha256: string;
+    status: import("../academic-workspace/types").AcademicSourceIndexStatus;
+    classification: import("../source-engine/types").DataClassification;
+    examScope: "UNCONFIRMED";
+  }>;
   id: string;
   title: string;
   subjectId: string;
@@ -25,6 +34,15 @@ export type StudioDocument = Readonly<{
   /** Unit used in citations: PDF pages, or numbered sections for text/Markdown files. */
   unit?: "page" | "section";
   importedAt?: string;
+  /** Original-file identity. Extracted passages remain derived, never learner evidence. */
+  provenance?: Readonly<{
+    sourceId: string;
+    sha256: string;
+    originalFileName: string;
+    extractionMethod: string;
+    artifactRole: "DERIVED";
+    originalRole: "ORIGINAL_SOURCE";
+  }>;
   pages: readonly StudioPage[];
 }>;
 
@@ -34,6 +52,8 @@ export type StudioCitation = Readonly<{
   pageNumber: number;
   passageId: string;
   quote: string;
+  documentVersion?: number;
+  sourceSha256?: string;
 }>;
 
 export type Derived<T> = T & Readonly<{ materialKind: "DERIVED_MATERIAL"; canonical: false; citations: readonly StudioCitation[] }>;
@@ -59,6 +79,14 @@ export type StudioQuizAttempt = Readonly<{
   assisted: boolean;
   mode?: "QUIZ" | "MOCK_EXAM";
   durationSeconds?: number;
+  pendingResponses?: readonly Readonly<{
+    questionId: string;
+    response: string;
+    prompt: string;
+    citations: readonly StudioCitation[];
+    status: "PENDING_HUMAN_VALIDATION";
+    confidence: Confidence;
+  }>[];
   items: readonly Readonly<{ questionId: string; cardId: string; correct: boolean; confidence?: Confidence }>[];
 }>;
 

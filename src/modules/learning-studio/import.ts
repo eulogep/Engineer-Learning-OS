@@ -12,9 +12,32 @@ const SECTION_CHARS = 2_000;
 
 export type ImportFormat = "PDF" | "MARKDOWN" | "TEXT";
 export type ImportMetadata = Readonly<{ title: string; subjectLabel: string; chapter: string; docType: StudioDocType }>;
-export type RawPage = Readonly<{ pageNumber: number; text: string }>;
+export type RawPage = Readonly<{ pageNumber: number; text: string; ocr?: boolean }>;
 
 export class ImportError extends Error {}
+
+/** A PDF without a usable text layer: on-device OCR can be offered to the learner. */
+export class OcrAvailableError extends ImportError {
+  readonly pageCount: number;
+
+  constructor(pageCount: number) {
+    super(`Aucun texte lisible : ce PDF semble scanné (${pageCount} page${pageCount > 1 ? "s" : ""}). Tu peux lancer la reconnaissance de texte (OCR) sur cet appareil.`);
+    this.pageCount = pageCount;
+  }
+}
+
+/** Pages whose text layer is missing or too thin to be a real page of text. */
+export const MIN_PAGE_TEXT_CHARS = 20;
+export function pagesNeedingOcr(pages: readonly RawPage[]): number[] {
+  return pages.filter((page) => cleanExtractedText(page.text).length < MIN_PAGE_TEXT_CHARS).map((page) => page.pageNumber);
+}
+
+/** Content-addressed identity makes retries and renamed duplicates idempotent. */
+export async function originalFileIdentity(bytes: ArrayBuffer): Promise<{ id: string; sha256: string }> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return { id: `original:${sha256}`, sha256 };
+}
 
 export function importFormat(fileName: string): ImportFormat | null {
   const extension = fileName.toLowerCase().split(".").pop();
@@ -87,7 +110,7 @@ export function textToSections(text: string): RawPage[] {
 export function buildImportedDocument(id: string, metadata: ImportMetadata, rawPages: readonly RawPage[], unit: "page" | "section", importedAt: Date): StudioDocument {
   if (rawPages.length > MAX_IMPORT_PAGES) throw new ImportError(`Document trop long (${rawPages.length} pages, maximum ${MAX_IMPORT_PAGES}).`);
   const pages: StudioPage[] = rawPages
-    .map((page) => ({ pageNumber: page.pageNumber, passages: splitPassages(page.text).map((text, index) => ({ id: `p${page.pageNumber}-${index + 1}`, text })) }))
+    .map((page) => ({ pageNumber: page.pageNumber, passages: splitPassages(page.text).map((text, index) => ({ id: `p${page.pageNumber}-${index + 1}`, text })), ...(page.ocr ? { ocr: true } : {}) }))
     .filter((page) => page.passages.length > 0);
   if (pages.length === 0) {
     throw new ImportError(unit === "page"

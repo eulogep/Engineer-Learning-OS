@@ -16,8 +16,10 @@ import {
   type GroundedAnswer, type KeyValueStorage, type StudioState,
 } from "@/modules/learning-studio/core";
 import { SYNTHETIC_DOCUMENTS } from "@/modules/learning-studio/fixtures";
+import { derivePrerequisites, remediationPath } from "@/modules/learning-studio/prerequisites";
 import { deleteImportedDocument, listImportedDocuments } from "@/modules/learning-studio/browser-library";
 import { ImportPanel } from "@/components/learning-studio/ImportPanel";
+import { AcademicCataloguePanel } from "@/components/learning-studio/AcademicCataloguePanel";
 import { ListenButton } from "@/components/learning-studio/ListenButton";
 import { MockExamPanel } from "@/components/learning-studio/MockExamPanel";
 import type { MindMapNode, SocraticPrompt, StudioCitation, StudioDocument } from "@/modules/learning-studio/types";
@@ -52,8 +54,11 @@ function MindMapTree({ node, onOpen }: { node: MindMapNode; onOpen: (c: StudioCi
 
 export function LearningStudio() {
   const [imported, setImported] = useState<StudioDocument[]>([]);
+  const [subjectFilter, setSubjectFilter] = useState("");
+  const [chapterFilter, setChapterFilter] = useState("");
   const [selected, setSelected] = useState<string[]>(SYNTHETIC_DOCUMENTS.map((document) => document.id));
   const [center, setCenter] = useState<"TUTOR" | "EXAM">("TUTOR");
+  const [examActive, setExamActive] = useState(false);
   const [openId, setOpenId] = useState(SYNTHETIC_DOCUMENTS[0].id);
   const [focus, setFocus] = useState<Focus>(null);
   const [query, setQuery] = useState("");
@@ -82,7 +87,11 @@ export function LearningStudio() {
   }, []);
 
   const library = useMemo<readonly StudioDocument[]>(() => [...SYNTHETIC_DOCUMENTS, ...imported], [imported]);
-  const documents = useMemo(() => library.filter((document) => selected.includes(document.id)), [library, selected]);
+  const visibleLibrary = library.filter((document) => (!subjectFilter || document.subjectId === subjectFilter)
+    && (!chapterFilter || document.chapter === chapterFilter));
+  const documents = useMemo(() => library.filter((document) => selected.includes(document.id)
+    && (!subjectFilter || document.subjectId === subjectFilter) && (!chapterFilter || document.chapter === chapterFilter)),
+  [library, selected, subjectFilter, chapterFilter]);
   const cards = useMemo(() => deriveFlashcards(documents), [documents]);
   const sheet = useMemo(() => revisionSheet(documents), [documents]);
   const quiz = useMemo(() => deriveQuiz(documents, 5), [documents]);
@@ -90,15 +99,18 @@ export function LearningStudio() {
   const openDocument = library.find((document) => document.id === openId) ?? SYNTHETIC_DOCUMENTS[0];
   const today = dayKey(new Date());
   const plan = useMemo(() => revisionPlan(cards.map((card) => card.id), state.reviews, today), [cards, state.reviews, today]);
-  const board = useMemo(() => difficulties(state.attempts, deriveFlashcards(library)), [state.attempts, library]);
+  const allCards = useMemo(() => deriveFlashcards(library), [library]);
+  const board = useMemo(() => difficulties(state.attempts, allCards), [state.attempts, allCards]);
+  const relations = useMemo(() => derivePrerequisites(allCards), [allCards]);
   const dueCards = cards.filter((card) => plan[0]?.due.includes(card.id));
   const currentCard = dueCards[cardIndex % Math.max(1, dueCards.length)];
 
   function persist(next: StudioState) { setState(next); writeStudioState(storage(), next); }
 
   function addImported(document: StudioDocument) {
-    setImported((list) => [...list, document]);
-    setSelected((list) => [...list, document.id]);
+    setImported((list) => list.some((item) => item.id === document.id) ? list : [...list, document]);
+    setSelected((list) => [...new Set([...list, document.id])]);
+    setSubjectFilter(document.subjectId); setChapterFilter("");
     setOpenId(document.id); setFocus(null);
   }
 
@@ -153,13 +165,25 @@ export function LearningStudio() {
         <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-800"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />100 % local · aucune IA externe</Badge>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)_minmax(300px,380px)]">
+      <div className={examActive ? "mx-auto max-w-3xl" : "grid gap-4 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)_minmax(300px,380px)]"}>
         {/* Library */}
-        <aside aria-label="Bibliothèque de sources" className="space-y-4">
+        <aside aria-label="Bibliothèque de sources" className="space-y-4" hidden={examActive}>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4" aria-hidden="true" />Bibliothèque</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {library.map((document) => (
+              <label className="block text-xs">Matière
+                <select value={subjectFilter} onChange={(event) => { setSubjectFilter(event.target.value); setChapterFilter(""); }} className="my-1 w-full rounded border p-2">
+                  <option value="">Toutes les matières</option>
+                  {[...new Map(library.map((document) => [document.subjectId, document.subjectLabel])).entries()].map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs">Chapitre
+                <select value={chapterFilter} onChange={(event) => setChapterFilter(event.target.value)} className="my-1 w-full rounded border p-2">
+                  <option value="">Tous les chapitres</option>
+                  {[...new Set(library.filter((document) => !subjectFilter || document.subjectId === subjectFilter).map((document) => document.chapter))].filter(Boolean).map((chapter) => <option key={chapter}>{chapter}</option>)}
+                </select>
+              </label>
+              {visibleLibrary.map((document) => (
                 <div key={document.id} className={`rounded-lg border p-2 ${openId === document.id ? "border-emerald-400 bg-emerald-50/50" : ""}`}>
                   <div className="flex items-start gap-2">
                     <input type="checkbox" className="mt-1" checked={selected.includes(document.id)} aria-label={`Utiliser « ${document.title} » comme source`}
@@ -180,8 +204,9 @@ export function LearningStudio() {
                   </div>
                 </div>
               ))}
-              <p className="text-xs text-slate-500">{selected.length} source{selected.length > 1 ? "s" : ""} sélectionnée{selected.length > 1 ? "s" : ""}</p>
+              <p className="text-xs text-slate-500">{documents.length} source(s) active(s) dans ce périmètre</p>
               <ImportPanel onImported={addImported} />
+              <AcademicCataloguePanel documents={imported} onImported={addImported} />
             </CardContent>
           </Card>
           <Card>
@@ -206,7 +231,7 @@ export function LearningStudio() {
             <CardContent ref={viewer} className="max-h-[28rem] space-y-3 overflow-y-auto">
               {openDocument.pages.map((page) => (
                 <section key={page.pageNumber} aria-label={`Page ${page.pageNumber}`} className="space-y-1.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{openDocument.unit === "section" ? "Section" : "Page"} {page.pageNumber}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{openDocument.unit === "section" ? "Section" : "Page"} {page.pageNumber}{page.ocr && <span className="ml-2 rounded bg-amber-100 px-1 normal-case tracking-normal text-amber-900">texte reconnu par OCR · à vérifier</span>}</p>
                   {page.passages.map((passage) => {
                     const focused = focus?.documentId === openDocument.id && focus.pageNumber === page.pageNumber && focus.passageId === passage.id;
                     return <p key={passage.id} data-passage={`${openDocument.id}:${page.pageNumber}:${passage.id}`}
@@ -222,12 +247,12 @@ export function LearningStudio() {
         <section aria-label="Professeur" className="order-first space-y-4 lg:order-none">
           <div role="tablist" aria-label="Mode d’étude" className="inline-flex rounded-lg border bg-white p-1">
             {([["TUTOR", "Professeur"], ["EXAM", "Examen blanc"]] as const).map(([value, label]) => (
-              <button key={value} type="button" role="tab" aria-selected={center === value} onClick={() => setCenter(value)}
+              <button key={value} type="button" role="tab" disabled={examActive} aria-selected={center === value} onClick={() => setCenter(value)}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${center === value ? "bg-emerald-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>
             ))}
           </div>
           {center === "EXAM" ? (
-            <MockExamPanel documents={documents} onFinished={(attempt) => persist({ ...state, attempts: [...state.attempts, attempt] })}
+            <MockExamPanel documents={documents} onActiveChange={setExamActive} onFinished={(attempt) => persist({ ...state, attempts: [...state.attempts, attempt] })}
               renderCitation={(citation) => <CitationChip citation={citation} onOpen={open} documents={library} />} />
           ) : <>
           <Card>
@@ -291,7 +316,7 @@ export function LearningStudio() {
         </section>
 
         {/* Tools */}
-        <aside aria-label="Outils d’apprentissage">
+        <aside aria-label="Outils d’apprentissage" hidden={examActive}>
           <Card>
             <CardContent className="pt-4">
               <Tabs defaultValue="cards">
@@ -372,7 +397,27 @@ export function LearningStudio() {
                   <div>
                     <p className="text-sm font-medium">Difficultés</p>
                     {board.length === 0 ? <p className="text-xs text-slate-500">Aucune erreur enregistrée pour l’instant.</p>
-                      : <ul className="mt-1 space-y-1 text-sm">{board.slice(0, 6).map((entry) => <li key={entry.term} className="flex justify-between"><span>{entry.term}</span><span className="text-red-700">{entry.errors}/{entry.attempts}</span></li>)}</ul>}
+                      : <ul className="mt-1 space-y-2 text-sm">{board.slice(0, 6).map((entry) => {
+                        const path = remediationPath(entry.term, allCards, relations);
+                        return (
+                          <li key={entry.term} className="rounded-md border p-2">
+                            <div className="flex justify-between"><span className="font-medium">{entry.term}</span><span className="text-red-700">{entry.errors}/{entry.attempts}</span></div>
+                            {path.prerequisites.length > 0 && (
+                              <div className="mt-1 text-xs text-slate-600">
+                                Revois d’abord :{" "}
+                                {path.prerequisites.map((step, index) => (
+                                  <span key={step.term}>
+                                    {index > 0 && " → "}
+                                    {step.card ? <button type="button" className="text-emerald-800 underline-offset-2 hover:underline" onClick={() => open(step.card!.citations[0])}>{step.term}</button> : step.term}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {path.confusedWith.length > 0 && <p className="mt-1 text-xs text-amber-800">Souvent confondu avec : {path.confusedWith.join(", ")}</p>}
+                          </li>
+                        );
+                      })}</ul>}
+                    <p className="mt-2 text-[11px] text-slate-500">Prérequis déduits des définitions de tes cours : une piste de révision, pas une preuve de dépendance.</p>
                   </div>
                 </TabsContent>
               </Tabs>

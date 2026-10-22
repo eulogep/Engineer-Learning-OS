@@ -139,7 +139,11 @@ Toute réponse, quel que soit le fournisseur, passe par `askCourseAnswerIsGround
 - **P1 (reste)** : brancher le Studio sur les sources d’`academic-workspace` ; décider si une réussite à l’examen
   blanc peut devenir une preuve canonique *via* les règles existantes (décision humaine) ; relier difficultés ↔
   SCI-006 ; évaluer FSRS sur historique réel contre `CURRENT_V1` ; tuteur LLM local (WebGPU) derrière le même contrat.
-- **P2** : annotations PDF ; OCR local des PDF scannés ; Audio Overview étendue puis fournisseur Enterprise optionnel ;
+- **Fait ensuite** : parcours des prérequis pour chaque notion difficile (SCI-006 adapté aux cours importés : relation
+  déduite quand une définition cite une autre notion, citation comme provenance, parcours via `prerequisitePath`,
+  confusions SCI-006 réutilisées) ; **OCR local** des PDF scannés (tesseract.js, modèle français, worker, cœur
+  WebAssembly et données servis par l’app, lancé uniquement sur demande, pages marquées « à vérifier »).
+- **P2** : annotations PDF ; Audio Overview étendue puis fournisseur Enterprise optionnel ;
   conversations orales immersives (anglais) ; mode hors ligne complet (service worker).
 
 ## 8. Fondements scientifiques et limites
@@ -177,7 +181,7 @@ cité ; refus explicite hors sources ou hors sélection ; aucune écriture canon
 de l’interface trois colonnes.
 
 Limites du prototype : réponses extractives (pas de reformulation), extraction de définitions par motifs
-(« X est… », « X sert à… ») adaptée à des cours bien rédigés, pas d’OCR (PDF scannés refusés), pas d’annotations,
+(« X est… », « X sert à… ») adaptée à des cours bien rédigés, OCR limité au français et sensible à la qualité du scan, pas d’annotations,
 pas de service worker.
 
 Leçons d’implémentation (vérifiées par les tests) : un seuil BM25 absolu échoue sur de petits documents personnels
