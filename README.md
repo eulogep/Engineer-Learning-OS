@@ -13,6 +13,7 @@
 [![License MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 <p align="center">
+  <a href="https://daily-english-mission-ten.vercel.app/presentation"><b>🎬 Presentation</b></a> •
   <a href="#-live-demo"><b>🚀 Live Demo</b></a> •
   <a href="#-key-features">Features</a> •
   <a href="#-architecture">Architecture</a> •
@@ -22,9 +23,11 @@
   <a href="#-data-privacy--safety">Privacy</a>
 </p>
 
-<a href="https://daily-english-mission-ten.vercel.app">
-  <img src="public/screenshots/dashboard.png" alt="Engineer Learning OS — Aujourd'hui dashboard" width="880" />
+<a href="https://daily-english-mission-ten.vercel.app/presentation">
+  <img src="public/media/presentation-poster.jpg" alt="Watch the Engineer Learning OS presentation (1 min 40, French with captions)" width="880" />
 </a>
+
+<sub>🎬 <b><a href="https://daily-english-mission-ten.vercel.app/presentation">Watch the 100-second presentation</a></b> — French voice-over, captions included</sub>
 
 </div>
 
