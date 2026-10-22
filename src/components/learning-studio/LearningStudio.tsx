@@ -12,15 +12,19 @@ import { dayKey } from "@/modules/daily-english/local-mission";
 import type { ReviewOutcome } from "@/modules/daily-english/spaced-review";
 import {
   answerFromSources, citationLabel, deriveFlashcards, deriveQuiz, difficulties, feynmanFeedback, gradeQuiz, mindMap,
-  readStudioState, reviewCard, revisionPlan, revisionSheet, searchPassages, socraticPrompt, verifyCitation, writeStudioState,
+  readStudioState, reviewCard, revisionPlan, revisionSheet, searchPassages, socraticPrompt, studioReviewEvents, verifyCitation, writeStudioState,
   type GroundedAnswer, type KeyValueStorage, type StudioState,
 } from "@/modules/learning-studio/core";
 import { SYNTHETIC_DOCUMENTS } from "@/modules/learning-studio/fixtures";
 import { derivePrerequisites, remediationPath } from "@/modules/learning-studio/prerequisites";
+import { MIN_PREDICTIONS, replaySchedulers } from "@/modules/scientific-pedagogy/replay";
 import { deleteImportedDocument, listImportedDocuments } from "@/modules/learning-studio/browser-library";
 import { ImportPanel } from "@/components/learning-studio/ImportPanel";
 import { AcademicCataloguePanel } from "@/components/learning-studio/AcademicCataloguePanel";
 import { ListenButton } from "@/components/learning-studio/ListenButton";
+import { AudioOverviewPlayer } from "@/components/learning-studio/AudioOverviewPlayer";
+import { buildAudioOverview } from "@/modules/learning-studio/overview";
+import { annotationStatus, annotationsFor, createAnnotation, readAnnotations, writeAnnotations, type Annotation } from "@/modules/learning-studio/annotations";
 import { MockExamPanel } from "@/components/learning-studio/MockExamPanel";
 import type { MindMapNode, SocraticPrompt, StudioCitation, StudioDocument } from "@/modules/learning-studio/types";
 
@@ -75,6 +79,10 @@ export function LearningStudio() {
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const viewer = useRef<HTMLDivElement>(null);
+  const [annotations, setAnnotations] = useState<Annotation[]>(() => readAnnotations(storage()));
+  const [editing, setEditing] = useState<{ key: string; text: string } | null>(null);
+
+  function saveAnnotations(next: Annotation[]) { setAnnotations(next); writeAnnotations(storage(), next); }
 
   useEffect(() => {
     let alive = true;
@@ -102,6 +110,8 @@ export function LearningStudio() {
   const allCards = useMemo(() => deriveFlashcards(library), [library]);
   const board = useMemo(() => difficulties(state.attempts, allCards), [state.attempts, allCards]);
   const relations = useMemo(() => derivePrerequisites(allCards), [allCards]);
+  const replay = useMemo(() => replaySchedulers(studioReviewEvents(state)), [state]);
+  const overview = useMemo(() => buildAudioOverview(documents), [documents]);
   const dueCards = cards.filter((card) => plan[0]?.due.includes(card.id));
   const currentCard = dueCards[cardIndex % Math.max(1, dueCards.length)];
 
@@ -140,7 +150,9 @@ export function LearningStudio() {
 
   function rate(outcome: ReviewOutcome) {
     if (!currentCard) return;
-    persist({ ...state, reviews: { ...state.reviews, [currentCard.id]: reviewCard(state.reviews[currentCard.id], outcome, today) } });
+    persist({ ...state,
+      reviews: { ...state.reviews, [currentCard.id]: reviewCard(state.reviews[currentCard.id], outcome, today) },
+      reviewLog: [...(state.reviewLog ?? []), { cardId: currentCard.id, at: new Date().toISOString(), outcome }] });
     setFlipped(false); setCardIndex((index) => index + 1);
   }
 
@@ -227,15 +239,61 @@ export function LearningStudio() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4" aria-hidden="true" />{openDocument.title}</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4" aria-hidden="true" />{openDocument.title}</CardTitle>
+              {(() => {
+                const mine = annotations.filter((item) => item.documentId === openDocument.id).length;
+                const orphans = annotations.filter((item) => annotationStatus(item, library) === "SOURCE_MISSING");
+                return (
+                  <p className="text-xs text-slate-500">
+                    {mine} note{mine > 1 ? "s" : ""} sur ce document · stockées sur cet appareil
+                    {orphans.length > 0 && <> · <button type="button" className="text-amber-700 underline" onClick={() => {
+                      if (window.confirm(`${orphans.length} note(s) concernent un document supprimé. Les supprimer ?`)) saveAnnotations(annotations.filter((item) => !orphans.includes(item)));
+                    }}>{orphans.length} note(s) orpheline(s)</button></>}
+                  </p>
+                );
+              })()}
+            </CardHeader>
             <CardContent ref={viewer} className="max-h-[28rem] space-y-3 overflow-y-auto">
               {openDocument.pages.map((page) => (
                 <section key={page.pageNumber} aria-label={`Page ${page.pageNumber}`} className="space-y-1.5">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{openDocument.unit === "section" ? "Section" : "Page"} {page.pageNumber}{page.ocr && <span className="ml-2 rounded bg-amber-100 px-1 normal-case tracking-normal text-amber-900">texte reconnu par OCR · à vérifier</span>}</p>
                   {page.passages.map((passage) => {
                     const focused = focus?.documentId === openDocument.id && focus.pageNumber === page.pageNumber && focus.passageId === passage.id;
-                    return <p key={passage.id} data-passage={`${openDocument.id}:${page.pageNumber}:${passage.id}`}
-                      className={`rounded-md p-1.5 text-sm leading-relaxed ${focused ? "bg-amber-100 ring-2 ring-amber-400" : ""}`}>{passage.text}</p>;
+                    const key = `${openDocument.id}:${page.pageNumber}:${passage.id}`;
+                    const notes = annotationsFor(annotations, openDocument.id, page.pageNumber, passage.id);
+                    return (
+                      <div key={passage.id} className="group">
+                        <p data-passage={key}
+                          className={`rounded-md p-1.5 text-sm leading-relaxed ${focused ? "bg-amber-100 ring-2 ring-amber-400" : notes.length ? "bg-sky-50 underline decoration-sky-400 decoration-2 underline-offset-4" : ""}`}>{passage.text}</p>
+                        {notes.map((note) => (
+                          <div key={note.id} className="ml-3 mt-1 flex items-start gap-2 rounded-md border-l-2 border-sky-400 bg-white px-2 py-1 text-xs text-slate-700">
+                            <span className="flex-1"><span className="font-medium text-sky-800">Ma note :</span> {note.note}
+                              {annotationStatus(note, library) === "SOURCE_CHANGED" && <span className="ml-1 text-amber-700">(le passage a changé)</span>}</span>
+                            <button type="button" className="text-slate-400 hover:text-red-700" aria-label={`Supprimer la note « ${note.note.slice(0, 30)} »`}
+                              onClick={() => saveAnnotations(annotations.filter((item) => item.id !== note.id))}><Trash2 className="h-3 w-3" aria-hidden="true" /></button>
+                          </div>
+                        ))}
+                        {editing?.key === key ? (
+                          <div className="ml-3 mt-1 space-y-1">
+                            <label htmlFor={`note-${key}`} className="sr-only">Note sur ce passage</label>
+                            <Textarea id={`note-${key}`} value={editing.text} autoFocus className="min-h-14 text-xs"
+                              onChange={(event) => setEditing({ key, text: event.target.value })} />
+                            <div className="flex gap-1">
+                              <Button type="button" size="sm" className="h-7 text-xs" disabled={!editing.text.trim()} onClick={() => {
+                                saveAnnotations([...annotations, createAnnotation(openDocument, page.pageNumber, passage.id, editing.text, new Date(), `note-${Date.now()}`)]);
+                                setEditing(null);
+                              }}>Enregistrer la note</Button>
+                              <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(null)}>Annuler</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button type="button" onClick={() => setEditing({ key, text: "" })}
+                            className="ml-1 text-[11px] text-slate-400 opacity-60 hover:text-sky-800 focus:opacity-100 group-hover:opacity-100"
+                            aria-label={`Annoter le passage ${passage.id} de la page ${page.pageNumber}`}>+ annoter</button>
+                        )}
+                      </div>
+                    );
                   })}
                 </section>
               ))}
@@ -320,12 +378,13 @@ export function LearningStudio() {
           <Card>
             <CardContent className="pt-4">
               <Tabs defaultValue="cards">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="sheet">Fiche</TabsTrigger>
                   <TabsTrigger value="cards">Cartes</TabsTrigger>
                   <TabsTrigger value="quiz">Quiz</TabsTrigger>
                   <TabsTrigger value="map">Schéma</TabsTrigger>
                   <TabsTrigger value="plan">Plan</TabsTrigger>
+                  <TabsTrigger value="audio">Audio</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="sheet" className="max-h-[36rem] space-y-2 overflow-y-auto">
@@ -385,6 +444,10 @@ export function LearningStudio() {
                   <ul className="space-y-2"><MindMapTree node={mindMap(openDocument)} onOpen={open} /></ul>
                 </TabsContent>
 
+                <TabsContent value="audio">
+                  <AudioOverviewPlayer overview={overview} renderCitation={(citation) => <CitationChip citation={citation} onOpen={open} documents={library} />} />
+                </TabsContent>
+
                 <TabsContent value="plan" className="space-y-3">
                   <ul className="space-y-1 text-sm">
                     {plan.map((entry, index) => (
@@ -418,6 +481,23 @@ export function LearningStudio() {
                         );
                       })}</ul>}
                     <p className="mt-2 text-[11px] text-slate-500">Prérequis déduits des définitions de tes cours : une piste de révision, pas une preuve de dépendance.</p>
+                  </div>
+                  <div className="rounded-lg border p-2 text-sm" aria-label="Comparaison des planificateurs">
+                    <p className="font-medium">Planificateurs sur ton historique</p>
+                    {!replay.enough ? (
+                      <p className="mt-1 text-xs text-slate-500">Pas encore assez d’historique : {replay.predictions}/{MIN_PREDICTIONS} révisions espacées d’au moins 12 h. Continue à réviser, la comparaison s’affichera ici.</p>
+                    ) : (
+                      <>
+                        <table className="mt-1 w-full text-xs">
+                          <thead><tr className="text-left text-slate-500"><th>Modèle</th><th>Log-loss</th><th>Brier</th><th>Prédit</th></tr></thead>
+                          <tbody>{replay.scores.map((row) => (
+                            <tr key={row.scheduler}><td>{row.scheduler === "CURRENT_V1" ? "Actuel (Leitner)" : "FSRS-4.5"}</td><td>{row.logLoss}</td><td>{row.brier}</td><td>{Math.round(row.meanPredicted * 100)} %</td></tr>
+                          ))}</tbody>
+                        </table>
+                        <p className="mt-1 text-xs text-slate-600">Rappel observé : {Math.round(replay.scores[0].observedRecall * 100)} % sur {replay.predictions} révisions. Plus bas = meilleures prédictions.</p>
+                      </>
+                    )}
+                    <p className="mt-1 text-[11px] text-slate-500">Compare des prédictions de mémoire, pas des résultats d’apprentissage. Rien n’est modifié automatiquement.</p>
                   </div>
                 </TabsContent>
               </Tabs>

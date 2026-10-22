@@ -1,5 +1,6 @@
 import type { AskCourseAnswer } from "../academic-workspace/types";
 import { addDays, applyReview, type DayKey, type ReviewOutcome, type ReviewState } from "../daily-english/spaced-review";
+import type { ReviewEvent } from "../scientific-pedagogy/replay";
 import type {
   FeynmanFeedback, Flashcard, MindMapNode, PassageHit, QuizQuestion, SheetEntry, SocraticPrompt,
   StudioCitation, StudioDocument, StudioQuizAttempt,
@@ -287,7 +288,17 @@ export function difficulties(attempts: readonly StudioQuizAttempt[], cards: read
 export const STUDIO_STATE_KEY = "engineer-learning-os:learning-studio:v1";
 const MAX_ATTEMPTS = 50;
 
-export type StudioState = Readonly<{ version: 1; reviews: Readonly<Record<string, ReviewState>>; attempts: readonly StudioQuizAttempt[] }>;
+/** One flashcard rating; kept so schedulers can be compared on the learner's real history. */
+export type CardReviewLogEntry = Readonly<{ cardId: string; at: string; outcome: ReviewOutcome }>;
+const MAX_REVIEW_LOG = 2000;
+
+export type StudioState = Readonly<{
+  version: 1;
+  reviews: Readonly<Record<string, ReviewState>>;
+  attempts: readonly StudioQuizAttempt[];
+  /** Added later: absent in older saved states. */
+  reviewLog?: readonly CardReviewLogEntry[];
+}>;
 export type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
 const EMPTY: StudioState = { version: 1, reviews: {}, attempts: [] };
 
@@ -295,7 +306,10 @@ export function readStudioState(storage: KeyValueStorage | null): StudioState {
   try {
     const parsed = JSON.parse(storage?.getItem(STUDIO_STATE_KEY) ?? "null") as Partial<StudioState> | null;
     if (!parsed || parsed.version !== 1 || typeof parsed.reviews !== "object" || !Array.isArray(parsed.attempts)) return EMPTY;
-    return { version: 1, reviews: parsed.reviews ?? {}, attempts: parsed.attempts.filter((attempt) => attempt?.canonical === false) };
+    const reviewLog = Array.isArray(parsed.reviewLog)
+      ? parsed.reviewLog.filter((entry) => typeof entry?.cardId === "string" && typeof entry.at === "string" && ["SUCCESS", "PARTIAL", "FAIL"].includes(entry.outcome))
+      : [];
+    return { version: 1, reviews: parsed.reviews ?? {}, attempts: parsed.attempts.filter((attempt) => attempt?.canonical === false), reviewLog };
   } catch {
     return EMPTY;
   }
@@ -303,8 +317,20 @@ export function readStudioState(storage: KeyValueStorage | null): StudioState {
 
 export function writeStudioState(storage: KeyValueStorage | null, state: StudioState): void {
   try {
-    storage?.setItem(STUDIO_STATE_KEY, JSON.stringify({ ...state, attempts: state.attempts.slice(-MAX_ATTEMPTS) }));
+    storage?.setItem(STUDIO_STATE_KEY, JSON.stringify({ ...state, attempts: state.attempts.slice(-MAX_ATTEMPTS), reviewLog: (state.reviewLog ?? []).slice(-MAX_REVIEW_LOG) }));
   } catch {
     // Storage full or blocked: the session keeps working in memory.
   }
+}
+
+/**
+ * Review events for scheduler replay: flashcard ratings (PARTIAL counts as a
+ * success: the answer was recalled, with effort) and quiz / exam answers.
+ * Open answers awaiting human validation are not included.
+ */
+export function studioReviewEvents(state: StudioState): ReviewEvent[] {
+  return [
+    ...(state.reviewLog ?? []).map((entry) => ({ itemId: entry.cardId, at: Date.parse(entry.at), success: entry.outcome !== "FAIL" })),
+    ...state.attempts.flatMap((attempt) => attempt.items.map((item) => ({ itemId: item.cardId, at: Date.parse(attempt.at), success: item.correct }))),
+  ].filter((event) => Number.isFinite(event.at));
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useSyncExternalStore } from "react";
 import { useMissionStore } from "@/lib/store";
 import type { MissionStep } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +24,12 @@ const STEPS: { key: MissionStep; label: string; icon: React.ReactNode }[] = [
   { key: "done", label: "Terminé", icon: <PartyPopper className="h-4 w-4" /> },
 ];
 
+const noSubscription = () => () => {};
+const todayLabel = () => new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
 export function DailyEnglishMission() {
+  // The page is prerendered at deploy time: the date must come from the browser, not the build.
+  const today = useSyncExternalStore(noSubscription, todayLabel, () => "");
   const { currentStep, error, persistence, setStep, setError } = useMissionStore();
   const stepIndex = STEPS.findIndex((step) => step.key === currentStep);
 
@@ -33,7 +40,8 @@ export function DailyEnglishMission() {
           <div>
             <h1 className="text-lg font-bold tracking-tight text-stone-900">Daily English Mission</h1>
             <p className="text-xs text-stone-500">
-              {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+              {today}
+              {" · "}<Link href="/daily-english/roleplay" className="text-emerald-800 underline-offset-2 hover:underline">Jeux de rôle oraux</Link>
             </p>
           </div>
           <div className="flex items-center gap-2">

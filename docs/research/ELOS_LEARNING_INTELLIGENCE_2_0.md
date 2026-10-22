@@ -143,8 +143,16 @@ Toute réponse, quel que soit le fournisseur, passe par `askCourseAnswerIsGround
   déduite quand une définition cite une autre notion, citation comme provenance, parcours via `prerequisitePath`,
   confusions SCI-006 réutilisées) ; **OCR local** des PDF scannés (tesseract.js, modèle français, worker, cœur
   WebAssembly et données servis par l’app, lancé uniquement sur demande, pages marquées « à vérifier »).
-- **P2** : annotations PDF ; Audio Overview étendue puis fournisseur Enterprise optionnel ;
-  conversations orales immersives (anglais) ; mode hors ligne complet (service worker).
+- **P2 (fait)** : annotations des passages (note + surlignage, ancrées sur un instantané du passage, notes orphelines
+  détectées) ; résumé audio structuré (notions citées, prérequis, confusions, questions d’auto-test avec temps de
+  réflexion) lu par voix locales ; jeux de rôle oraux écrits à la main (stand-up, incident, entretien) avec voix
+  anglaise locale, réponse orale transcrite sur l’appareil, objectifs communicatifs et corrections locales ;
+  service worker (pages visitées réouvrables sans réseau, page hors ligne pour les autres) ; évaluation par rejeu
+  FSRS-4.5 vs `CURRENT_V1` sur l’historique réel de l’apprenant (log-loss, Brier), affichée dès 30 prédictions.
+- **Décisions enregistrées** : les résultats du Studio (examen blanc compris) restent `DERIVED_PRACTICE` ; aucun
+  fournisseur d’IA externe ; branche `main` privée conservée telle quelle.
+- **Reste à mesurer** : le résultat FSRS vs Leitner sur l’historique réel (calculé dans l’app, non accessible au
+  développeur) ; l’effet pédagogique réel avec des apprenants.
 
 ## 8. Fondements scientifiques et limites
 

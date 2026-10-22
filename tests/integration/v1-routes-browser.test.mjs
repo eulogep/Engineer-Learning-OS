@@ -30,7 +30,8 @@ async function openChrome() {
   let launchError;
   browser.on("error", (error) => { launchError = error; });
   let endpoint;
-  for (let attempt = 0; attempt < 200; attempt++) {
+  // Up to 30 s: CI runners start several Chrome instances in parallel.
+  for (let attempt = 0; attempt < 600; attempt++) {
     if (launchError) throw launchError;
     try {
       const [port, route] = (await readFile(path.join(temp, "profile/DevToolsActivePort"), "utf8")).trim().split("\n");
@@ -40,7 +41,7 @@ async function openChrome() {
       await wait(50);
     }
   }
-  if (!endpoint) throw new Error("Fresh headless Chrome did not start within ten seconds.");
+  if (!endpoint) throw new Error("Fresh headless Chrome did not start within thirty seconds.");
   const socket = new WebSocket(endpoint);
   await new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });
