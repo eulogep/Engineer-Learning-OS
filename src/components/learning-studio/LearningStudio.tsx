@@ -97,7 +97,7 @@ export function LearningStudio() {
   function persist(next: StudioState) { setState(next); writeStudioState(storage(), next); }
 
   function addImported(document: StudioDocument) {
-    setImported((list) => [...list, document]);
+    setImported((list) => list.some((item) => item.id === document.id) ? list : [...list, document]);
     setSelected((list) => [...list, document.id]);
     setOpenId(document.id); setFocus(null);
   }

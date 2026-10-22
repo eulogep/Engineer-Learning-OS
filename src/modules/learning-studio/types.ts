@@ -25,6 +25,15 @@ export type StudioDocument = Readonly<{
   /** Unit used in citations: PDF pages, or numbered sections for text/Markdown files. */
   unit?: "page" | "section";
   importedAt?: string;
+  /** Original-file identity. Extracted passages remain derived, never learner evidence. */
+  provenance?: Readonly<{
+    sourceId: string;
+    sha256: string;
+    originalFileName: string;
+    extractionMethod: string;
+    artifactRole: "DERIVED";
+    originalRole: "ORIGINAL_SOURCE";
+  }>;
   pages: readonly StudioPage[];
 }>;
 
@@ -34,6 +43,8 @@ export type StudioCitation = Readonly<{
   pageNumber: number;
   passageId: string;
   quote: string;
+  documentVersion?: number;
+  sourceSha256?: string;
 }>;
 
 export type Derived<T> = T & Readonly<{ materialKind: "DERIVED_MATERIAL"; canonical: false; citations: readonly StudioCitation[] }>;

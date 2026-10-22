@@ -16,6 +16,13 @@ export type RawPage = Readonly<{ pageNumber: number; text: string }>;
 
 export class ImportError extends Error {}
 
+/** Content-addressed identity makes retries and renamed duplicates idempotent. */
+export async function originalFileIdentity(bytes: ArrayBuffer): Promise<{ id: string; sha256: string }> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return { id: `original:${sha256}`, sha256 };
+}
+
 export function importFormat(fileName: string): ImportFormat | null {
   const extension = fileName.toLowerCase().split(".").pop();
   if (extension === "pdf") return "PDF";

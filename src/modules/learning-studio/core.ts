@@ -41,7 +41,8 @@ export function allPassages(documents: readonly StudioDocument[]) {
 }
 
 export function citationFor(document: StudioDocument, pageNumber: number, passageId: string, quote: string): StudioCitation {
-  return { documentId: document.id, pageNumber, passageId, quote };
+  return { documentId: document.id, pageNumber, passageId, quote, documentVersion: document.version,
+    ...(document.provenance ? { sourceSha256: document.provenance.sha256 } : {}) };
 }
 
 export function citationLabel(documents: readonly StudioDocument[], citation: StudioCitation): string {
@@ -52,8 +53,10 @@ export function citationLabel(documents: readonly StudioDocument[], citation: St
 
 /** A citation is valid only if its quote appears verbatim in the cited passage. */
 export function verifyCitation(documents: readonly StudioDocument[], citation: StudioCitation): boolean {
-  const passage = documents.find((item) => item.id === citation.documentId)
-    ?.pages.find((page) => page.pageNumber === citation.pageNumber)
+  const document = documents.find((item) => item.id === citation.documentId);
+  if (!document || (citation.documentVersion !== undefined && citation.documentVersion !== document.version)
+    || (citation.sourceSha256 !== undefined && citation.sourceSha256 !== document.provenance?.sha256)) return false;
+  const passage = document.pages.find((page) => page.pageNumber === citation.pageNumber)
     ?.passages.find((item) => item.id === citation.passageId);
   return !!passage && citation.quote.trim().length > 0 && passage.text.includes(citation.quote.trim());
 }
