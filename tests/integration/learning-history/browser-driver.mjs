@@ -60,7 +60,8 @@ export async function createBrowserHarness(errorTypes) {
     }
     cdp?.socket.close();
     if (server) await new Promise((resolve) => server.close(resolve));
-    await rm(temp, { recursive: true, force: true });
+    // Chrome helper processes can still write to the profile right after the main process exits.
+    await rm(temp, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
   try {
     const compiled = require("next/dist/compiled/webpack/webpack");
