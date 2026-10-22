@@ -16,7 +16,7 @@
     "competency-tracking",
     "technical-english"
   ],
-  "license": "MIT",
+  "license": "UNLICENSED",
   "private": true,
   "scripts": {
     "dev": "node scripts/vendor-ort.mjs && next dev --webpack -p 3000",

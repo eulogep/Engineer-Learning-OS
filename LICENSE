@@ -1,21 +1,40 @@
-MIT License
+Engineer Learning OS — Proprietary License
 
-Copyright (c) 2026 Euloge Mabiala and Engineer Learning OS Contributors
+Copyright (c) 2026 Euloge Mabiala. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software, including its source code, documentation, designs, learning
+content, media and associated files (the "Software"), is the exclusive property
+of Euloge Mabiala (the "Owner").
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. No license granted
+   Except as expressly stated in section 2, no right or license is granted to
+   use, copy, modify, merge, publish, distribute, sublicense, sell, host, or
+   create derivative works of the Software, in whole or in part, by any means,
+   without the Owner's prior written permission.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. Permitted use
+   a. Viewing the source code where the Owner makes it publicly visible, for
+      personal evaluation only.
+   b. Using the official hosted version operated by the Owner, under the terms
+      published with it.
+
+3. Earlier versions
+   Versions of the Software published before the date this license was adopted
+   (up to and including release v0.3.0) were distributed under the MIT License.
+   Those copies remain available under that license; this license applies to
+   every later version.
+
+4. Third-party components
+   Third-party libraries, models and assets included in or used by the Software
+   remain subject to their own licenses.
+
+5. Commercial licensing
+   Commercial use, partnerships and licensing requests: contact the Owner via
+   https://github.com/eulogep.
+
+6. Disclaimer
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   OWNER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF
+   OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
