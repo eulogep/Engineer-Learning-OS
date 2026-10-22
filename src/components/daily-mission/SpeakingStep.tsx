@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mic, Square, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { isExternalZaiClientProcessingEnabled } from "@/config/external-ai";
 import { startLocalSession } from "@/components/daily-mission/mission-gateway";
+import { LocalTranscriptionPanel, useLocalTranscription } from "@/components/daily-mission/LocalTranscription";
 
 const MAX_DURATION = 120; // 2 minutes in seconds
 
@@ -38,6 +39,7 @@ export function SpeakingStep() {
   // Local mode: the recording never leaves the browser; it is only replayed.
   const [localAudioUrl, setLocalAudioUrl] = useState<string | null>(null);
   const [draft, setDraft] = useState(transcription ?? "");
+  const asr = useLocalTranscription();
 
   // `done` always tracks `transcription` 1:1 in every code path below
   // (startRecording clears both, transcribeAudio sets both), so it's
@@ -147,6 +149,9 @@ export function SpeakingStep() {
           await transcribeAudio(blob);
         } else {
           setLocalAudioUrl(URL.createObjectURL(blob));
+          // On-device Whisper (opt-in): the learner reviews the text before validating.
+          const text = await asr.transcribe(blob);
+          if (text) setDraft(text);
         }
       };
 
@@ -176,7 +181,7 @@ export function SpeakingStep() {
           : "Impossible d'accéder au micro"
       );
     }
-  }, [externalProcessingEnabled, setError, setTranscription, setCorrectedText, setFeedback, stopTimer, cleanupStream, transcribeAudio]);
+  }, [externalProcessingEnabled, asr, setError, setTranscription, setCorrectedText, setFeedback, stopTimer, cleanupStream, transcribeAudio]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && recording) {
@@ -218,9 +223,12 @@ export function SpeakingStep() {
         <CardContent className="p-6 flex flex-col items-center gap-4">
           {!externalProcessingEnabled && (
             <div className="w-full rounded-lg border border-stone-200 bg-stone-50 p-3 text-xs text-stone-600" role="note">
-              Mode local : l’enregistrement reste dans votre navigateur (réécoute uniquement). Écrivez ensuite ce que vous avez dit pour obtenir la correction.
+              {asr.enabled
+                ? "Mode local : votre voix est transcrite dans ce navigateur, jamais envoyée. Relisez le texte avant de valider."
+                : "Mode local : l’enregistrement reste dans votre navigateur (réécoute uniquement). Écrivez ensuite ce que vous avez dit pour obtenir la correction."}
             </div>
           )}
+          {!externalProcessingEnabled && !done && <LocalTranscriptionPanel asr={asr} purpose="production" />}
           {/* Timer */}
           <div className="text-3xl font-mono font-semibold text-stone-900">
             {formatTime(duration)}
@@ -234,7 +242,7 @@ export function SpeakingStep() {
           </p>
 
           {/* Record button */}
-          {!done && !transcribing && (
+          {!done && !transcribing && !asr.busy && (
             <button
               onClick={recording ? stopRecording : startRecording}
               className={`flex h-20 w-20 items-center justify-center rounded-full transition-all disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none ${
@@ -279,11 +287,11 @@ export function SpeakingStep() {
               onChange={(event) => setDraft(event.target.value)}
               placeholder="Today I want to talk about…"
               className="min-h-32 bg-white"
-              disabled={recording}
+              disabled={recording || asr.busy}
             />
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-stone-400">{draft.trim() ? draft.trim().split(/\s+/).length : 0} mots</p>
-              <Button onClick={submitLocalProduction} disabled={!draft.trim() || recording} variant="secondary">
+              <Button onClick={submitLocalProduction} disabled={!draft.trim() || recording || asr.busy} variant="secondary">
                 Valider ma production
               </Button>
             </div>

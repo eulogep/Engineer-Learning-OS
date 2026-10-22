@@ -18,6 +18,11 @@
 !components.json
 !vercel.json
 
+# Build-time script that vendors the ONNX runtime (on-device speech recognition)
+!scripts
+scripts/*
+!scripts/vendor-ort.mjs
+
 # Prisma schema only (never the local SQLite database or the seed)
 !prisma
 prisma/*

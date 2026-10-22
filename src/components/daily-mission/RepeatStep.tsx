@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Mic, Square, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { isLocalSessionId } from "@/modules/daily-english/local-mission";
 import { storeLocalSession } from "@/components/daily-mission/mission-gateway";
+import { LocalTranscriptionPanel, useLocalTranscription } from "@/components/daily-mission/LocalTranscription";
+import { compareReading, type ReadingComparison } from "@/modules/local-speech/core";
 
 const MAX_DURATION = 120; // 2 minutes
 
@@ -64,6 +66,8 @@ export function RepeatStep() {
   }, []);
 
   const localMode = isLocalSessionId(speakingSession?.id);
+  const asr = useLocalTranscription();
+  const [reading, setReading] = useState<ReadingComparison | null>(null);
 
   const saveRepeat = useCallback(async () => {
     if (!speakingSession?.id) return;
@@ -123,6 +127,11 @@ export function RepeatStep() {
         stopTimer();
         cleanupStream();
         setRecording(false);
+        // Pronunciation feedback: what Whisper heard, compared word by word with the corrected text.
+        if (localMode && asr.enabled && correctedText) {
+          const heard = await asr.transcribe(new Blob(chunksRef.current, { type: mediaRecorder.mimeType || "audio/webm" }));
+          if (heard !== null) setReading(compareReading(correctedText, heard));
+        }
         await saveRepeat();
       };
 
@@ -146,7 +155,7 @@ export function RepeatStep() {
           : "Impossible d'accéder au micro"
       );
     }
-  }, [setError, stopTimer, cleanupStream, saveRepeat]);
+  }, [setError, stopTimer, cleanupStream, saveRepeat, localMode, asr, correctedText]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && recording) {
@@ -187,7 +196,7 @@ export function RepeatStep() {
         <CardContent className="p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Badge className="text-xs bg-blue-600">À lire</Badge>
-            <p className="text-xs text-stone-400">Version corrigée par l&apos;IA</p>
+            <p className="text-xs text-stone-400">{localMode ? "Version corrigée" : "Version corrigée par l’IA"}</p>
           </div>
           <p className="text-sm text-stone-900 leading-relaxed font-medium">
             {correctedText}
@@ -231,6 +240,37 @@ export function RepeatStep() {
                 <Mic className="h-8 w-8 text-white" />
               )}
             </button>
+          )}
+
+          {localMode && !recording && <LocalTranscriptionPanel asr={asr} purpose="pronunciation" />}
+
+          {reading && !recording && !asr.busy && (
+            <div className="w-full space-y-3 rounded-lg border border-stone-200 bg-white p-4 text-left" aria-live="polite">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm font-semibold text-stone-900">Prononciation</p>
+                <p className="text-sm text-stone-600">
+                  <span className={`text-lg font-bold ${reading.score >= 85 ? "text-green-700" : reading.score >= 60 ? "text-amber-700" : "text-red-700"}`}>{reading.score} %</span>
+                  {" "}· {reading.matched}/{reading.total} mots reconnus
+                </p>
+              </div>
+              <p className="text-sm leading-relaxed text-stone-800">
+                {reading.words.map((word, i) => (
+                  <span key={i} className={word.heard ? "" : "rounded bg-amber-100 px-0.5 text-amber-900 underline decoration-amber-500 decoration-2 underline-offset-2"}>
+                    {word.word}{" "}
+                  </span>
+                ))}
+              </p>
+              <p className="text-xs text-stone-500">
+                {reading.missed.length === 0
+                  ? "Tous les mots ont été reconnus. Excellent !"
+                  : "Les mots surlignés n’ont pas été reconnus : réécoutez-vous, articulez-les, puis réessayez."}
+              </p>
+              {done && (
+                <Button variant="outline" size="sm" onClick={() => void startRecording()}>
+                  <Mic className="mr-1.5 h-3.5 w-3.5" /> Nouvel essai
+                </Button>
+              )}
+            </div>
           )}
 
           {localMode && !done && !recording && !saving && (
