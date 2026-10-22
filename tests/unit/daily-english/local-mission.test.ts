@@ -167,6 +167,13 @@ test("local analysis fixes frequent French-speaker errors with French explanatio
   assert.ok(result.feedback.errors.every((error) => error.explanation.length > 10));
 });
 
+test("transcribed variants of \"I am agree\" are corrected too", () => {
+  for (const text of ["I am agreed with you.", "I'm agree with you.", "i am agree with you."]) {
+    assert.equal(analyzeProduction(text, []).correctedText, "I agree with you.");
+  }
+  assert.equal(analyzeProduction("They agreed with me.", []).feedback.errors.length, 0);
+});
+
 test("clean English produces no invented errors", () => {
   const result = analyzeProduction("I want to explore new opportunities this year.", [{ id: "w", word: "explore" }]);
   assert.equal(result.correctedText, "I want to explore new opportunities this year.");

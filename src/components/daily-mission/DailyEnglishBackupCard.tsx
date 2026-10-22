@@ -16,6 +16,8 @@ function storage(): KeyValueStorage | null {
   }
 }
 
+const count = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
+
 /** Saves / restores the browser-only Daily English progress as a file kept by the learner. */
 export function DailyEnglishBackupCard() {
   const input = useRef<HTMLInputElement>(null);
@@ -40,7 +42,7 @@ export function DailyEnglishBackupCard() {
     setMessage(null); setError(null);
     try {
       const summary = importBackup(storage(), await file.text());
-      setMessage(`Progression fusionnée : ${summary.missions} missions (${summary.completed} terminées), ${summary.wordsScheduled} mots planifiés. Rien n’a été écrasé.`);
+      setMessage(`Progression fusionnée : ${count(summary.missions, "mission", "missions")} (${count(summary.completed, "terminée", "terminées")}), ${count(summary.wordsScheduled, "mot planifié", "mots planifiés")}. Rien n’a été écrasé.`);
     } catch (cause) {
       setError(cause instanceof BackupError ? cause.message : "Import impossible.");
     }
