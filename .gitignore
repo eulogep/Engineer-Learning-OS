@@ -144,3 +144,4 @@ _tes_extract_tmp/
 
 # Generated at build time by scripts/vendor-ort.mjs
 /public/vendor/ort/
+/public/vendor/pdfjs/

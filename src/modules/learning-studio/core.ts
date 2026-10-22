@@ -46,7 +46,8 @@ export function citationFor(document: StudioDocument, pageNumber: number, passag
 
 export function citationLabel(documents: readonly StudioDocument[], citation: StudioCitation): string {
   const document = documents.find((item) => item.id === citation.documentId);
-  return document ? `${document.title}, p. ${citation.pageNumber}` : "Source inconnue";
+  if (!document) return "Source inconnue";
+  return document.unit === "section" ? `${document.title}, section ${citation.pageNumber}` : `${document.title}, p. ${citation.pageNumber}`;
 }
 
 /** A citation is valid only if its quote appears verbatim in the cited passage. */
@@ -84,7 +85,23 @@ export function searchPassages(documents: readonly StudioDocument[], query: stri
 // Local tutor: extractive, source-only answers in the existing AskCourse contract
 // ---------------------------------------------------------------------------
 
-const MIN_ANSWER_SCORE = 1.5;
+/**
+ * Answerability does not use an absolute BM25 score (its IDF collapses on small
+ * personal documents): the best passage must cover at least half of the
+ * question's distinct terms. BM25 only ranks the candidates.
+ */
+const MIN_QUERY_COVERAGE = 0.5;
+
+function queryCoverage(hit: PassageHit, query: string): number {
+  const terms = [...new Set(tokenize(query))];
+  if (terms.length === 0) return 0;
+  const tokens = new Set(tokenize(hit.passage.text));
+  return terms.filter((term) => tokens.has(term)).length / terms.length;
+}
+
+function isAnswerable(hit: PassageHit | undefined, query: string): hit is PassageHit {
+  return !!hit && queryCoverage(hit, query) >= MIN_QUERY_COVERAGE;
+}
 
 function bestSentences(hit: PassageHit, query: string, max = 2): string[] {
   const terms = new Set(tokenize(query));
@@ -106,7 +123,9 @@ export type GroundedAnswer = AskCourseAnswer & Readonly<{ studioCitations: reado
 export function answerFromSources(documents: readonly StudioDocument[], question: string): GroundedAnswer {
   const hits = searchPassages(documents, question, 4);
   const top = hits[0]?.score ?? 0;
-  const relevant = top >= MIN_ANSWER_SCORE ? hits.filter((hit) => hit.score >= top * 0.6).slice(0, 2) : [];
+  const relevant = isAnswerable(hits[0], question)
+    ? hits.filter((hit) => hit.score >= top * 0.6 && queryCoverage(hit, question) >= MIN_QUERY_COVERAGE / 2).slice(0, 2)
+    : [];
   const quoted = relevant.flatMap((hit) => bestSentences(hit, question).map((sentence) => ({ hit, sentence })));
   if (quoted.length === 0) {
     return { answer: "Je ne trouve pas cette information dans les sources sélectionnées.", citations: [], studioCitations: [],
@@ -125,7 +144,7 @@ export function answerFromSources(documents: readonly StudioDocument[], question
 /** Socratic mode: a guiding question first, then graduated hints, the answer last. */
 export function socraticPrompt(documents: readonly StudioDocument[], question: string): SocraticPrompt | null {
   const hit = searchPassages(documents, question, 1)[0];
-  if (!hit || hit.score < MIN_ANSWER_SCORE) return null;
+  if (!isAnswerable(hit, question)) return null;
   const sentence = bestSentences(hit, question, 1)[0] ?? splitSentences(hit.passage.text)[0];
   const inPassage = deriveFlashcards([hit.document]).filter((item) => item.citations[0].passageId === hit.passage.id && item.citations[0].pageNumber === hit.page.pageNumber);
   const card = inPassage.find((item) => item.citations[0].quote === sentence) ?? inPassage[0];

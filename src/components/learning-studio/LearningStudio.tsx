@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { BookOpen, CheckCircle2, FileText, HelpCircle, Lightbulb, Search, ShieldCheck, XCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, CheckCircle2, FileText, HelpCircle, Lightbulb, Search, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,11 @@ import {
   type GroundedAnswer, type KeyValueStorage, type StudioState,
 } from "@/modules/learning-studio/core";
 import { SYNTHETIC_DOCUMENTS } from "@/modules/learning-studio/fixtures";
-import type { MindMapNode, SocraticPrompt, StudioCitation } from "@/modules/learning-studio/types";
+import { deleteImportedDocument, listImportedDocuments } from "@/modules/learning-studio/browser-library";
+import { ImportPanel } from "@/components/learning-studio/ImportPanel";
+import { ListenButton } from "@/components/learning-studio/ListenButton";
+import { MockExamPanel } from "@/components/learning-studio/MockExamPanel";
+import type { MindMapNode, SocraticPrompt, StudioCitation, StudioDocument } from "@/modules/learning-studio/types";
 
 function storage(): KeyValueStorage | null {
   try { return window.localStorage; } catch { return null; }
@@ -24,14 +28,14 @@ function storage(): KeyValueStorage | null {
 
 type Focus = { documentId: string; pageNumber: number; passageId: string } | null;
 
-function CitationChip({ citation, onOpen }: { citation: StudioCitation; onOpen: (c: StudioCitation) => void }) {
-  const verified = verifyCitation(SYNTHETIC_DOCUMENTS, citation);
+function CitationChip({ citation, onOpen, documents }: { citation: StudioCitation; onOpen: (c: StudioCitation) => void; documents: readonly StudioDocument[] }) {
+  const verified = verifyCitation(documents, citation);
   return (
     <button type="button" onClick={() => onOpen(citation)}
       className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-900 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
-      aria-label={`Ouvrir la source : ${citationLabel(SYNTHETIC_DOCUMENTS, citation)}${verified ? ", citation vérifiée" : ", citation non vérifiée"}`}>
+      aria-label={`Ouvrir la source : ${citationLabel(documents, citation)}${verified ? ", citation vérifiée" : ", citation non vérifiée"}`}>
       {verified ? <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> : <XCircle className="h-3 w-3 text-red-600" aria-hidden="true" />}
-      {citationLabel(SYNTHETIC_DOCUMENTS, citation)}
+      {citationLabel(documents, citation)}
     </button>
   );
 }
@@ -47,7 +51,9 @@ function MindMapTree({ node, onOpen }: { node: MindMapNode; onOpen: (c: StudioCi
 }
 
 export function LearningStudio() {
+  const [imported, setImported] = useState<StudioDocument[]>([]);
   const [selected, setSelected] = useState<string[]>(SYNTHETIC_DOCUMENTS.map((document) => document.id));
+  const [center, setCenter] = useState<"TUTOR" | "EXAM">("TUTOR");
   const [openId, setOpenId] = useState(SYNTHETIC_DOCUMENTS[0].id);
   const [focus, setFocus] = useState<Focus>(null);
   const [query, setQuery] = useState("");
@@ -65,19 +71,44 @@ export function LearningStudio() {
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const viewer = useRef<HTMLDivElement>(null);
 
-  const documents = useMemo(() => SYNTHETIC_DOCUMENTS.filter((document) => selected.includes(document.id)), [selected]);
+  useEffect(() => {
+    let alive = true;
+    listImportedDocuments().then((documents) => {
+      if (!alive) return;
+      setImported(documents);
+      setSelected((list) => [...new Set([...list, ...documents.map((document) => document.id)])]);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const library = useMemo<readonly StudioDocument[]>(() => [...SYNTHETIC_DOCUMENTS, ...imported], [imported]);
+  const documents = useMemo(() => library.filter((document) => selected.includes(document.id)), [library, selected]);
   const cards = useMemo(() => deriveFlashcards(documents), [documents]);
   const sheet = useMemo(() => revisionSheet(documents), [documents]);
   const quiz = useMemo(() => deriveQuiz(documents, 5), [documents]);
   const hits = useMemo(() => (query.trim() ? searchPassages(documents, query, 5) : []), [documents, query]);
-  const openDocument = SYNTHETIC_DOCUMENTS.find((document) => document.id === openId) ?? SYNTHETIC_DOCUMENTS[0];
+  const openDocument = library.find((document) => document.id === openId) ?? SYNTHETIC_DOCUMENTS[0];
   const today = dayKey(new Date());
   const plan = useMemo(() => revisionPlan(cards.map((card) => card.id), state.reviews, today), [cards, state.reviews, today]);
-  const board = useMemo(() => difficulties(state.attempts, deriveFlashcards(SYNTHETIC_DOCUMENTS)), [state.attempts]);
+  const board = useMemo(() => difficulties(state.attempts, deriveFlashcards(library)), [state.attempts, library]);
   const dueCards = cards.filter((card) => plan[0]?.due.includes(card.id));
   const currentCard = dueCards[cardIndex % Math.max(1, dueCards.length)];
 
   function persist(next: StudioState) { setState(next); writeStudioState(storage(), next); }
+
+  function addImported(document: StudioDocument) {
+    setImported((list) => [...list, document]);
+    setSelected((list) => [...list, document.id]);
+    setOpenId(document.id); setFocus(null);
+  }
+
+  async function removeImported(document: StudioDocument) {
+    if (!window.confirm(`Supprimer « ${document.title} » de cet appareil ?`)) return;
+    await deleteImportedDocument(document.id);
+    setImported((list) => list.filter((item) => item.id !== document.id));
+    setSelected((list) => list.filter((id) => id !== document.id));
+    if (openId === document.id) setOpenId(SYNTHETIC_DOCUMENTS[0].id);
+  }
 
   function open(citation: StudioCitation) {
     setOpenId(citation.documentId);
@@ -108,7 +139,7 @@ export function LearningStudio() {
   }
 
   const feedback = explanation.trim() && answer?.studioCitations[0]
-    ? feynmanFeedback(SYNTHETIC_DOCUMENTS.find((d) => d.id === answer.studioCitations[0].documentId)?.pages.find((p) => p.pageNumber === answer.studioCitations[0].pageNumber)?.passages.find((p) => p.id === answer.studioCitations[0].passageId)?.text ?? "", explanation)
+    ? feynmanFeedback(library.find((d) => d.id === answer.studioCitations[0].documentId)?.pages.find((p) => p.pageNumber === answer.studioCitations[0].pageNumber)?.passages.find((p) => p.id === answer.studioCitations[0].passageId)?.text ?? "", explanation)
     : null;
 
   return (
@@ -128,7 +159,7 @@ export function LearningStudio() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4" aria-hidden="true" />Bibliothèque</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {SYNTHETIC_DOCUMENTS.map((document) => (
+              {library.map((document) => (
                 <div key={document.id} className={`rounded-lg border p-2 ${openId === document.id ? "border-emerald-400 bg-emerald-50/50" : ""}`}>
                   <div className="flex items-start gap-2">
                     <input type="checkbox" className="mt-1" checked={selected.includes(document.id)} aria-label={`Utiliser « ${document.title} » comme source`}
@@ -138,10 +169,19 @@ export function LearningStudio() {
                       <span className="text-xs text-slate-500">{document.subjectLabel} · {document.chapter} · {document.pages.length} p.</span>
                     </button>
                   </div>
-                  <div className="mt-1 flex gap-1 pl-6"><Badge variant="secondary" className="text-[10px]">{document.docType}</Badge>{document.synthetic && <Badge variant="outline" className="text-[10px]">synthétique</Badge>}</div>
+                  <div className="mt-1 flex items-center gap-1 pl-6">
+                    <Badge variant="secondary" className="text-[10px]">{document.docType}</Badge>
+                    {document.synthetic ? <Badge variant="outline" className="text-[10px]">synthétique</Badge> : <Badge variant="outline" className="border-sky-300 text-[10px] text-sky-800">personnel · local</Badge>}
+                    {!document.synthetic && (
+                      <button type="button" onClick={() => void removeImported(document)} className="ml-auto rounded p-1 text-slate-400 hover:text-red-700" aria-label={`Supprimer « ${document.title} » de cet appareil`}>
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
               <p className="text-xs text-slate-500">{selected.length} source{selected.length > 1 ? "s" : ""} sélectionnée{selected.length > 1 ? "s" : ""}</p>
+              <ImportPanel onImported={addImported} />
             </CardContent>
           </Card>
           <Card>
@@ -152,7 +192,7 @@ export function LearningStudio() {
                 {hits.map((hit) => (
                   <li key={`${hit.document.id}:${hit.page.pageNumber}:${hit.passage.id}`}>
                     <button type="button" className="w-full rounded-md p-2 text-left text-xs hover:bg-slate-50" onClick={() => open({ documentId: hit.document.id, pageNumber: hit.page.pageNumber, passageId: hit.passage.id, quote: hit.passage.text })}>
-                      <span className="font-medium">{hit.document.title}, p. {hit.page.pageNumber}</span>
+                      <span className="font-medium">{citationLabel(library, { documentId: hit.document.id, pageNumber: hit.page.pageNumber, passageId: hit.passage.id, quote: "" })}</span>
                       <span className="block text-slate-600">{hit.passage.text.slice(0, 110)}…</span>
                     </button>
                   </li>
@@ -166,7 +206,7 @@ export function LearningStudio() {
             <CardContent ref={viewer} className="max-h-[28rem] space-y-3 overflow-y-auto">
               {openDocument.pages.map((page) => (
                 <section key={page.pageNumber} aria-label={`Page ${page.pageNumber}`} className="space-y-1.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Page {page.pageNumber}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{openDocument.unit === "section" ? "Section" : "Page"} {page.pageNumber}</p>
                   {page.passages.map((passage) => {
                     const focused = focus?.documentId === openDocument.id && focus.pageNumber === page.pageNumber && focus.passageId === passage.id;
                     return <p key={passage.id} data-passage={`${openDocument.id}:${page.pageNumber}:${passage.id}`}
@@ -180,6 +220,16 @@ export function LearningStudio() {
 
         {/* Tutor */}
         <section aria-label="Professeur" className="order-first space-y-4 lg:order-none">
+          <div role="tablist" aria-label="Mode d’étude" className="inline-flex rounded-lg border bg-white p-1">
+            {([["TUTOR", "Professeur"], ["EXAM", "Examen blanc"]] as const).map(([value, label]) => (
+              <button key={value} type="button" role="tab" aria-selected={center === value} onClick={() => setCenter(value)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${center === value ? "bg-emerald-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>
+            ))}
+          </div>
+          {center === "EXAM" ? (
+            <MockExamPanel documents={documents} onFinished={(attempt) => persist({ ...state, attempts: [...state.attempts, attempt] })}
+              renderCitation={(citation) => <CitationChip citation={citation} onOpen={open} documents={library} />} />
+          ) : <>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Professeur</CardTitle></CardHeader>
             <CardContent className="space-y-3">
@@ -206,7 +256,7 @@ export function LearningStudio() {
                 ) : (
                   <>
                     <p className="leading-relaxed">{answer.answer}</p>
-                    <div className="flex flex-wrap gap-1.5">{answer.studioCitations.map((citation, i) => <CitationChip key={i} citation={citation} onOpen={open} />)}</div>
+                    <div className="flex flex-wrap gap-1.5">{answer.studioCitations.map((citation, i) => <CitationChip key={i} citation={citation} onOpen={open} documents={library} />)}</div>
                     <div className="space-y-2 rounded-lg border bg-slate-50 p-3">
                       <label htmlFor="studio-feynman" className="flex items-center gap-1.5 text-sm font-medium"><Lightbulb className="h-4 w-4" aria-hidden="true" />Méthode Feynman : explique-le avec tes mots, sans regarder</label>
                       <Textarea id="studio-feynman" value={explanation} onChange={(event) => setExplanation(event.target.value)} className="min-h-16 bg-white" />
@@ -237,6 +287,7 @@ export function LearningStudio() {
               </CardContent>
             </Card>
           )}
+          </>}
         </section>
 
         {/* Tools */}
@@ -253,10 +304,11 @@ export function LearningStudio() {
                 </TabsList>
 
                 <TabsContent value="sheet" className="max-h-[36rem] space-y-2 overflow-y-auto">
+                  {sheet.length > 0 && <ListenButton label="Écouter la fiche" text={sheet.map((entry) => `${entry.term} : ${entry.definition}.`).join(" ")} />}
                   {sheet.map((entry) => (
                     <div key={`${entry.term}:${entry.citations[0].documentId}`} className="rounded-lg border p-2 text-sm">
                       <p><b>{entry.term}</b> {entry.definition}.</p>
-                      <div className="mt-1"><CitationChip citation={entry.citations[0]} onOpen={open} /></div>
+                      <div className="mt-1"><CitationChip citation={entry.citations[0]} onOpen={open} documents={library} /></div>
                     </div>
                   ))}
                 </TabsContent>
@@ -276,7 +328,7 @@ export function LearningStudio() {
                           <Button type="button" size="sm" onClick={() => rate("SUCCESS")}>Je savais</Button>
                         </div>
                       )}
-                      <CitationChip citation={currentCard.citations[0]} onOpen={open} />
+                      <CitationChip citation={currentCard.citations[0]} onOpen={open} documents={library} />
                     </div>
                   ) : <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">Toutes les cartes du jour sont révisées. Reviens demain.</p>}
                 </TabsContent>
@@ -295,7 +347,7 @@ export function LearningStudio() {
                           </label>
                         );
                       })}
-                      {quizScore !== null && <CitationChip citation={item.citations[0]} onOpen={open} />}
+                      {quizScore !== null && <CitationChip citation={item.citations[0]} onOpen={open} documents={library} />}
                     </fieldset>
                   ))}
                   {quizScore === null

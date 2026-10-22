@@ -22,6 +22,9 @@ export type StudioDocument = Readonly<{
   /** Fixtures are synthetic teaching material written for the prototype. */
   synthetic: boolean;
   classification: "PUBLIC" | "PERSONAL";
+  /** Unit used in citations: PDF pages, or numbered sections for text/Markdown files. */
+  unit?: "page" | "section";
+  importedAt?: string;
   pages: readonly StudioPage[];
 }>;
 
@@ -54,5 +57,10 @@ export type StudioQuizAttempt = Readonly<{
   evidenceKind: "DERIVED_PRACTICE";
   canonical: false;
   assisted: boolean;
-  items: readonly Readonly<{ questionId: string; cardId: string; correct: boolean }>[];
+  mode?: "QUIZ" | "MOCK_EXAM";
+  durationSeconds?: number;
+  items: readonly Readonly<{ questionId: string; cardId: string; correct: boolean; confidence?: Confidence }>[];
 }>;
+
+/** Self-reported confidence before seeing the correction (calibration, SCI-002). */
+export type Confidence = "SURE" | "UNSURE" | "GUESS";
