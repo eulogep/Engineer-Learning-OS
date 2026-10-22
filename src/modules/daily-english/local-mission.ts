@@ -263,7 +263,8 @@ type Rule = Readonly<{ pattern: RegExp; replace: string | ((match: string, ...gr
 
 /** Frequent errors of French speakers, each with a short explanation in French. */
 const RULES: readonly Rule[] = [
-  { pattern: /\bI am agree\b/gi, replace: "I agree", explanation: "« agree » est un verbe : on dit « I agree », sans « am »." },
+  // Speech recognition tends to hear "I am agree" as "I am agreed": both are wrong.
+  { pattern: /\bI(?: am|'m) agreed?\b/gi, replace: "I agree", explanation: "« agree » est un verbe : on dit « I agree », sans « am »." },
   { pattern: /\b(since) (\d+|a|one|two|three|four|five|six|ten) (years?|months?|weeks?|days?|hours?)\b/gi, replace: (_m, _s, n, unit) => `for ${n} ${unit}`, explanation: "Pour une durée, on utilise « for » ; « since » introduit un point de départ (since 2024)." },
   { pattern: /\bdepends? of\b/gi, replace: (m) => m.replace(/of$/i, "on"), explanation: "On dit « depend on », jamais « depend of »." },
   { pattern: /\bexplain me\b/gi, replace: "explain to me", explanation: "« explain » demande « to » devant la personne : « explain to me »." },
