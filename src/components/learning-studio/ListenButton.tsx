@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Square, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-function localFrenchVoice(): SpeechSynthesisVoice | null {
+export function localFrenchVoice(): SpeechSynthesisVoice | null {
   const local = window.speechSynthesis.getVoices().filter((item) => item.localService && item.lang.toLowerCase().startsWith("fr"));
   return local.find((item) => item.lang.toLowerCase().replace("_", "-") === "fr-fr") ?? local[0] ?? null;
 }
