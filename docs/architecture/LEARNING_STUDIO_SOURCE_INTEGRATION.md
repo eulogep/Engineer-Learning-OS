@@ -9,8 +9,8 @@ Next.js client, server build, `public/`, or a tracked fixture. The distributed
 
 ## Storage contract
 
-Studio IndexedDB schema 2 retains the existing `documents` store and adds an
-`originals` store. Import records the SHA-256 of the original bytes, original
+Studio IndexedDB schema 3 retains the existing `documents` store and adds
+`originals` and `catalogues` stores. Import records the SHA-256 of the original bytes, original
 filename, extraction method, source ID and DERIVED role. The source ID is
 content-addressed. A renamed identical file resolves to the existing import;
 changed bytes create a distinct entry without overwriting prior versions.
@@ -27,6 +27,22 @@ validates a reference to extracted text, not the accuracy of PDF extraction.
 Legacy citations remain supported; they do not gain stronger provenance merely
 by being loaded. No import produces a canonical learning event.
 
+## Academic catalogue workflow
+
+Open “Catalogue académique local” in the library. Select a real JSON catalogue
+conforming to `AcademicSourceIndex` (the public sample is deliberately rejected).
+Then choose each original file explicitly. Before extraction, its SHA-256 must
+match the catalogue entry. Unknown and company classifications are refused.
+No paths are fetched from a server and no batch upload is performed.
+
+Raw catalogue revisions are retained by content hash in IndexedDB. Changed source
+metadata produces a distinct document snapshot, preserving the earlier binding.
+An entry is shown as available only after a document is linked by source ID and
+hash. ChatGPT-only entries are displayed as missing; they are never reconstructed.
+Source status is retained separately from exam scope, which stays UNCONFIRMED.
+Use the subject/chapter selectors to restrict study tools and search. Plain
+imports allow an explicit chapter label. The three-column workspace is retained.
+
 ## Reproducible checks
 
 ```sh
@@ -40,8 +56,8 @@ browser integration coverage before the full mission is considered validated.
 
 ## Remaining mission scope
 
-- Local AcademicSourceIndex connection, truthful missing-source reporting and
-  course/chapter selection; preserve separate programme/current/exam scopes.
+- Validate the catalogue connection with authorized real course files and browser
+  reload/recovery checks; integrate confirmed exam-scope updates separately.
 - DOCX extraction through a local supported adapter, without invented pages.
 - Confirmed WEB/SQL exam selection, configurable duration, free/technical
   responses, detailed correction and pending human validation where needed.
@@ -55,7 +71,7 @@ browser integration coverage before the full mission is considered validated.
 Keep the pre-integration branch and commits intact. Revert integration commits
 in reverse order, without resetting or force-pushing shared history. Do not
 downgrade IndexedDB to version 1: old code opening that version will receive a
-VersionError after upgrade. A rollback build must retain the schema-2 opening
+VersionError after upgrade. A rollback build must retain the schema-3 opening
 code and preserve both stores. Never clear the database as a rollback strategy.
 Export/recovery UX remains a required follow-up; until validated, retain the
 original filesystem files independently.

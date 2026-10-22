@@ -2,6 +2,8 @@
 
 import { ImportError, MAX_IMPORT_BYTES, MAX_IMPORT_PAGES, buildImportedDocument, importFormat, originalFileIdentity, textToSections, type ImportMetadata, type RawPage } from "./import";
 import type { StudioDocument } from "./types";
+import type { AcademicSourceIndex, AcademicSourceIndexEntry } from "../academic-workspace/types";
+import { bindAcademicSource, parseLocalCatalogue, sourceImportAllowed } from "./academic-catalogue";
 
 // Browser adapters for the learner's own documents: pdf.js runs locally with a
 // worker served by the app (public/vendor/pdfjs), and documents persist in
@@ -10,14 +12,16 @@ import type { StudioDocument } from "./types";
 const DB_NAME = "engineer-learning-os-studio";
 const STORE = "documents";
 const ORIGINALS = "originals";
+const CATALOGUES = "catalogues";
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     let blocked = false;
-    const request = indexedDB.open(DB_NAME, 2);
+    const request = indexedDB.open(DB_NAME, 3);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: "id" });
       if (!request.result.objectStoreNames.contains(ORIGINALS)) request.result.createObjectStore(ORIGINALS);
+      if (!request.result.objectStoreNames.contains(CATALOGUES)) request.result.createObjectStore(CATALOGUES);
     };
     request.onsuccess = () => {
       if (blocked) { request.result.close(); return; }
@@ -120,13 +124,17 @@ async function readPdfPages(bytes: Uint8Array): Promise<RawPage[]> {
 }
 
 /** Reads a PDF, Markdown or text file entirely in the browser and stores it locally. */
-export async function importFile(file: File, metadata: ImportMetadata): Promise<StudioDocument> {
+export async function importFile(file: File, metadata: ImportMetadata, source?: AcademicSourceIndexEntry): Promise<StudioDocument> {
+  if (source && !sourceImportAllowed(source)) throw new ImportError("Classification interdite dans le Studio académique.");
   const format = importFormat(file.name);
   if (!format) throw new ImportError("Format non pris en charge : PDF, Markdown (.md) ou texte (.txt).");
   if (file.size > MAX_IMPORT_BYTES) throw new ImportError("Fichier trop volumineux (25 Mo maximum).");
   const bytes = await file.arrayBuffer();
   const identity = await originalFileIdentity(bytes);
-  const existing = (await listImportedDocuments()).find((item) => item.id === identity.id);
+  if (source && source.sha256 !== identity.sha256) throw new ImportError("Empreinte différente : sélectionnez le fichier original du catalogue.");
+  const sourceRevision = source ? await originalFileIdentity(new TextEncoder().encode(JSON.stringify(source)).buffer) : null;
+  const documentId = sourceRevision ? `academic:${sourceRevision.sha256}:${identity.sha256}` : identity.id;
+  const existing = (await listImportedDocuments()).find((item) => item.id === documentId);
   if (existing) return existing;
   let document: StudioDocument;
   if (format === "PDF") {
@@ -137,15 +145,54 @@ export async function importFile(file: File, metadata: ImportMetadata): Promise<
       if (error instanceof ImportError) throw error;
       throw new ImportError("Ce PDF n’a pas pu être lu (fichier protégé ou endommagé).");
     }
-    document = buildImportedDocument(identity.id, metadata, pages, "page", new Date());
+    document = buildImportedDocument(documentId, metadata, pages, "page", new Date());
   } else {
-    document = buildImportedDocument(identity.id, metadata, textToSections(new TextDecoder().decode(bytes)), "section", new Date());
+    document = buildImportedDocument(documentId, metadata, textToSections(new TextDecoder().decode(bytes)), "section", new Date());
   }
   document = { ...document, provenance: {
     sourceId: identity.id, sha256: identity.sha256, originalFileName: file.name,
     extractionMethod: format === "PDF" ? "PDFJS_DIST_LOCAL" : "PLAIN_TEXT_LOCAL",
     artifactRole: "DERIVED", originalRole: "ORIGINAL_SOURCE",
   } };
+  if (source) document = bindAcademicSource(document, source);
   await saveImportedDocument(document, file);
   return (await listImportedDocuments()).find((item) => item.id === document.id) ?? document;
+}
+
+/** Keep catalogue revisions locally, never replacing earlier snapshots. */
+export async function saveLocalCatalogue(raw: string): Promise<AcademicSourceIndex> {
+  const index = parseLocalCatalogue(JSON.parse(raw));
+  const { sha256 } = await originalFileIdentity(new TextEncoder().encode(raw).buffer);
+  const db = await openDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(CATALOGUES, "readwrite");
+      const store = transaction.objectStore(CATALOGUES);
+      store.put(raw, sha256);
+      store.put(sha256, "active");
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error ?? new Error("Transaction annulée"));
+    });
+  } finally { db.close(); }
+  return index;
+}
+
+export async function readLocalCatalogue(): Promise<AcademicSourceIndex | null> {
+  const db = await openDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const store = db.transaction(CATALOGUES, "readonly").objectStore(CATALOGUES);
+      const active = store.get("active");
+      active.onerror = () => reject(active.error);
+      active.onsuccess = () => {
+        if (!active.result) { resolve(null); return; }
+        const snapshot = store.get(active.result);
+        snapshot.onerror = () => reject(snapshot.error);
+        snapshot.onsuccess = () => {
+          try { resolve(parseLocalCatalogue(JSON.parse(snapshot.result))); } catch (error) { reject(error); }
+        };
+      };
+    });
+  } finally { db.close(); }
 }

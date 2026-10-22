@@ -12,6 +12,14 @@ export type StudioPassage = Readonly<{ id: string; text: string }>;
 export type StudioPage = Readonly<{ pageNumber: number; passages: readonly StudioPassage[] }>;
 
 export type StudioDocument = Readonly<{
+  academicSource?: Readonly<{
+    id: string;
+    path: string;
+    sha256: string;
+    status: import("../academic-workspace/types").AcademicSourceIndexStatus;
+    classification: import("../source-engine/types").DataClassification;
+    examScope: "UNCONFIRMED";
+  }>;
   id: string;
   title: string;
   subjectId: string;

@@ -12,6 +12,7 @@ import type { StudioDocType, StudioDocument } from "@/modules/learning-studio/ty
 export function ImportPanel({ onImported }: { onImported: (document: StudioDocument) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [subject, setSubject] = useState("Mes documents");
+  const [chapter, setChapter] = useState("");
   const [docType, setDocType] = useState<StudioDocType>("COURS");
   const [status, setStatus] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,7 +22,7 @@ export function ImportPanel({ onImported }: { onImported: (document: StudioDocum
     setBusy(true);
     setStatus({ tone: "info", text: `Lecture de « ${file.name} » sur cet appareil…` });
     try {
-      const document = await importFile(file, { title: titleFromFileName(file.name), subjectLabel: subject, chapter: "", docType });
+      const document = await importFile(file, { title: titleFromFileName(file.name), subjectLabel: subject, chapter, docType });
       const passages = document.pages.reduce((sum, page) => sum + page.passages.length, 0);
       setStatus({ tone: "info", text: `« ${document.title} » importé : ${document.pages.length} ${document.unit === "section" ? "section(s)" : "page(s)"}, ${passages} passages citables.` });
       onImported(document);
@@ -49,6 +50,9 @@ export function ImportPanel({ onImported }: { onImported: (document: StudioDocum
           </select>
         </div>
       </div>
+      <label htmlFor="studio-import-chapter" className="block text-xs text-slate-500">Chapitre
+        <Input id="studio-import-chapter" value={chapter} onChange={(event) => setChapter(event.target.value)} className="mt-1 h-8 text-sm" />
+      </label>
       <input ref={input} type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain" className="hidden"
         aria-label="Fichier de cours à importer" onChange={(event) => void onFile(event.target.files?.[0])} />
       <Button type="button" size="sm" variant="secondary" className="w-full" disabled={busy} onClick={() => input.current?.click()}>

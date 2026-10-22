@@ -18,6 +18,7 @@ import {
 import { SYNTHETIC_DOCUMENTS } from "@/modules/learning-studio/fixtures";
 import { deleteImportedDocument, listImportedDocuments } from "@/modules/learning-studio/browser-library";
 import { ImportPanel } from "@/components/learning-studio/ImportPanel";
+import { AcademicCataloguePanel } from "@/components/learning-studio/AcademicCataloguePanel";
 import { ListenButton } from "@/components/learning-studio/ListenButton";
 import { MockExamPanel } from "@/components/learning-studio/MockExamPanel";
 import type { MindMapNode, SocraticPrompt, StudioCitation, StudioDocument } from "@/modules/learning-studio/types";
@@ -52,6 +53,8 @@ function MindMapTree({ node, onOpen }: { node: MindMapNode; onOpen: (c: StudioCi
 
 export function LearningStudio() {
   const [imported, setImported] = useState<StudioDocument[]>([]);
+  const [subjectFilter, setSubjectFilter] = useState("");
+  const [chapterFilter, setChapterFilter] = useState("");
   const [selected, setSelected] = useState<string[]>(SYNTHETIC_DOCUMENTS.map((document) => document.id));
   const [center, setCenter] = useState<"TUTOR" | "EXAM">("TUTOR");
   const [openId, setOpenId] = useState(SYNTHETIC_DOCUMENTS[0].id);
@@ -82,7 +85,11 @@ export function LearningStudio() {
   }, []);
 
   const library = useMemo<readonly StudioDocument[]>(() => [...SYNTHETIC_DOCUMENTS, ...imported], [imported]);
-  const documents = useMemo(() => library.filter((document) => selected.includes(document.id)), [library, selected]);
+  const visibleLibrary = library.filter((document) => (!subjectFilter || document.subjectId === subjectFilter)
+    && (!chapterFilter || document.chapter === chapterFilter));
+  const documents = useMemo(() => library.filter((document) => selected.includes(document.id)
+    && (!subjectFilter || document.subjectId === subjectFilter) && (!chapterFilter || document.chapter === chapterFilter)),
+  [library, selected, subjectFilter, chapterFilter]);
   const cards = useMemo(() => deriveFlashcards(documents), [documents]);
   const sheet = useMemo(() => revisionSheet(documents), [documents]);
   const quiz = useMemo(() => deriveQuiz(documents, 5), [documents]);
@@ -98,7 +105,8 @@ export function LearningStudio() {
 
   function addImported(document: StudioDocument) {
     setImported((list) => list.some((item) => item.id === document.id) ? list : [...list, document]);
-    setSelected((list) => [...list, document.id]);
+    setSelected((list) => [...new Set([...list, document.id])]);
+    setSubjectFilter(document.subjectId); setChapterFilter("");
     setOpenId(document.id); setFocus(null);
   }
 
@@ -159,7 +167,19 @@ export function LearningStudio() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4" aria-hidden="true" />Bibliothèque</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {library.map((document) => (
+              <label className="block text-xs">Matière
+                <select value={subjectFilter} onChange={(event) => { setSubjectFilter(event.target.value); setChapterFilter(""); }} className="my-1 w-full rounded border p-2">
+                  <option value="">Toutes les matières</option>
+                  {[...new Map(library.map((document) => [document.subjectId, document.subjectLabel])).entries()].map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs">Chapitre
+                <select value={chapterFilter} onChange={(event) => setChapterFilter(event.target.value)} className="my-1 w-full rounded border p-2">
+                  <option value="">Tous les chapitres</option>
+                  {[...new Set(library.filter((document) => !subjectFilter || document.subjectId === subjectFilter).map((document) => document.chapter))].filter(Boolean).map((chapter) => <option key={chapter}>{chapter}</option>)}
+                </select>
+              </label>
+              {visibleLibrary.map((document) => (
                 <div key={document.id} className={`rounded-lg border p-2 ${openId === document.id ? "border-emerald-400 bg-emerald-50/50" : ""}`}>
                   <div className="flex items-start gap-2">
                     <input type="checkbox" className="mt-1" checked={selected.includes(document.id)} aria-label={`Utiliser « ${document.title} » comme source`}
@@ -180,8 +200,9 @@ export function LearningStudio() {
                   </div>
                 </div>
               ))}
-              <p className="text-xs text-slate-500">{selected.length} source{selected.length > 1 ? "s" : ""} sélectionnée{selected.length > 1 ? "s" : ""}</p>
+              <p className="text-xs text-slate-500">{documents.length} source(s) active(s) dans ce périmètre</p>
               <ImportPanel onImported={addImported} />
+              <AcademicCataloguePanel documents={imported} onImported={addImported} />
             </CardContent>
           </Card>
           <Card>
