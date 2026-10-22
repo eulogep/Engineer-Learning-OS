@@ -10,7 +10,7 @@
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS 4](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Local First](https://img.shields.io/badge/Architecture-Local--First-orange?style=for-the-badge&logo=sqlite&logoColor=white)](https://localfirstweb.dev/)
-[![License MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-8B0000?style=for-the-badge)](LICENSE)
 
 <p align="center">
   <a href="https://daily-english-mission-ten.vercel.app/presentation"><b>🎬 Presentation</b></a> •
@@ -49,7 +49,7 @@
 
 Traditional e-learning platforms rely on **passive video watching**, **superficial badges**, and **arbitrary completion percentages** that fail to build real engineering intuition.
 
-**Engineer Learning OS** is an open-source, local-first platform designed to turn engineering course materials and technical challenges into **verifiable mastery**. It combines **zero-hallucination document extraction**, **grounded academic quizzes**, **spaced error retrieval**, and **integrated technical English** into a distraction-free modular monolith.
+**Engineer Learning OS** is a local-first platform designed to turn engineering course materials and technical challenges into **verifiable mastery**. It combines **zero-hallucination document extraction**, **grounded academic quizzes**, **spaced error retrieval**, and **integrated technical English** into a distraction-free modular monolith.
 
 > ⚡ **Core Philosophy:** No fake progress. Every competency level (`NOT_SEEN` ➔ `PRACTICED` ➔ `VERIFIED`) is derived purely from **auditable, reproducible evidence records**.
 
@@ -259,20 +259,16 @@ nextjs, react, typescript, tailwindcss, indexeddb, cybersecurity-education
 
 ## 🤝 Contributing
 
-Contributions are welcome! Whether you want to add new academic subjects, create deliberate practice scenarios, or improve local document extraction bridges:
-
-1. Fork the project
-2. Create your feature branch (`git checkout -b feat/grounded-skill-pilot`)
-3. Commit your changes (`git commit -m 'feat: add grounded skill pilot'`)
-4. Verify the checks pass (`npm run typecheck && npm run lint && npm test`)
-5. Push to the branch (`git push origin feat/grounded-skill-pilot`)
-6. Open a Pull Request
+Engineer Learning OS is a proprietary project. External code contributions are not accepted at this time.
+Bug reports and feedback are welcome through [GitHub issues](https://github.com/eulogep/Engineer-Learning-OS/issues); for partnerships or licensing, contact [@eulogep](https://github.com/eulogep).
 
 ---
 
 ## 📄 License
 
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
+Copyright © 2026 Euloge Mabiala. **All rights reserved.** This software is proprietary; see [`LICENSE`](LICENSE).
+
+Versions up to and including **v0.3.0** were published under the MIT License and remain available under those terms.
 
 <div align="center">
   <sub>Built with ❤️ for rigorous engineering education and lifelong mastery.</sub>
