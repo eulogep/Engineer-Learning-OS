@@ -13,6 +13,9 @@ import { compareReading, type ReadingComparison } from "@/modules/local-speech/c
 
 const MAX_DURATION = 120; // 2 minutes
 
+/** Pronunciation score levels (% of words recognised). */
+const PLATEAU_SCORE_LEVELS = { strong: 85, fair: 60 } as const;
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -249,7 +252,7 @@ export function RepeatStep() {
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-sm font-semibold text-stone-900">Prononciation</p>
                 <p className="text-sm text-stone-600">
-                  <span className={`text-lg font-bold ${reading.score >= 85 ? "text-green-700" : reading.score >= 60 ? "text-amber-700" : "text-red-700"}`}>{reading.score} %</span>
+                  <span className={`text-lg font-bold ${reading.score >= PLATEAU_SCORE_LEVELS.strong ? "text-green-700" : reading.score >= PLATEAU_SCORE_LEVELS.fair ? "text-amber-700" : "text-red-700"}`}>{reading.score} %</span>
                   {" "}· {reading.matched}/{reading.total} mots reconnus
                 </p>
               </div>

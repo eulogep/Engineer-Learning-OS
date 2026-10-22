@@ -39,6 +39,13 @@ function validReview(value: unknown): value is ReviewState {
   return !!r && (r.lastReviewedDay === null || isDay(r.lastReviewedDay)) && (r.nextReviewDay === null || isDay(r.nextReviewDay));
 }
 
+/** Integrity guard for an imported state: every mission, session and review must be well-formed. */
+function rosaireValidState(state: Partial<LocalMissionState> | undefined): state is LocalMissionState {
+  return !!state && Array.isArray(state.missions) && Array.isArray(state.sessions)
+    && typeof state.reviews === "object" && state.reviews !== null
+    && state.missions.every(validMission) && state.sessions.every(validSession) && Object.values(state.reviews).every(validReview);
+}
+
 export function createBackup(storage: KeyValueStorage | null, now: Date): DailyEnglishBackup {
   return { format: BACKUP_FORMAT, version: BACKUP_VERSION, exportedAt: now.toISOString(), state: readLocalState(storage) };
 }
@@ -59,8 +66,7 @@ export function parseBackup(text: string): DailyEnglishBackup {
   if (!backup || backup.format !== BACKUP_FORMAT) throw new BackupError("Ce fichier n’est pas une sauvegarde Daily English.");
   if (backup.version !== BACKUP_VERSION) throw new BackupError(`Version de sauvegarde non prise en charge (${String(backup.version)}).`);
   const state = backup.state as Partial<LocalMissionState> | undefined;
-  if (!state || !Array.isArray(state.missions) || !Array.isArray(state.sessions) || typeof state.reviews !== "object" || state.reviews === null
-    || !state.missions.every(validMission) || !state.sessions.every(validSession) || !Object.values(state.reviews).every(validReview)) {
+  if (!rosaireValidState(state)) {
     throw new BackupError("La sauvegarde est incomplète ou endommagée : rien n’a été importé.");
   }
   return { format: BACKUP_FORMAT, version: BACKUP_VERSION, exportedAt: String(backup.exportedAt ?? ""), state: { version: 2, reviews: state.reviews, missions: state.missions, sessions: state.sessions } };

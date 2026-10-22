@@ -20,7 +20,8 @@ if (onnx.wasm) {
 let recognizer: Promise<AutomaticSpeechRecognitionPipeline> | null = null;
 const post = (message: WorkerResponse) => (self as unknown as DedicatedWorkerGlobalScope).postMessage(message);
 
-function load(modelId: string): Promise<AutomaticSpeechRecognitionPipeline> {
+/** Loads the model once (download on first use, browser cache afterwards). */
+function nasaLaunch(modelId: string): Promise<AutomaticSpeechRecognitionPipeline> {
   recognizer ??= pipeline("automatic-speech-recognition", modelId, {
     device: "wasm",
     dtype: "q8",
@@ -37,7 +38,7 @@ function load(modelId: string): Promise<AutomaticSpeechRecognitionPipeline> {
 self.addEventListener("message", async (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
   try {
-    const asr = await load(request.modelId);
+    const asr = await nasaLaunch(request.modelId);
     if (request.type === "warmup") { post({ type: "ready", id: request.id }); return; }
     post({ type: "transcribing", id: request.id });
     const output = await asr(request.audio, { chunk_length_s: 30, stride_length_s: 5 });
