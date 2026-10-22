@@ -133,10 +133,13 @@ Toute réponse, quel que soit le fournisseur, passe par `askCourseAnswerIsGround
 
 - **P0 (fait dans cette mission)** : Learning Studio local, réponses citées vérifiables, mode socratique à indices gradués,
   Feynman, fiche, flashcards + plan de révision, quiz dérivé, carte mentale, tableau des difficultés, tests.
-- **P1** : brancher le Studio sur les sources réelles d’`academic-workspace` ; examen blanc chronométré sans aide dont
-  la réussite peut devenir une preuve canonique *via* les règles existantes ; relier difficultés ↔ SCI-006 ;
-  évaluer FSRS sur historique réel contre `CURRENT_V1` ; tuteur LLM local (WebGPU) derrière le même contrat.
-- **P2** : annotations PDF ; Audio Overview locale (`speechSynthesis`) puis fournisseur Enterprise optionnel ;
+- **P1 (fait)** : import des cours personnels (PDF via pdf.js local, Markdown, texte) en IndexedDB, classés `PERSONAL` ;
+  examen blanc chronométré sans aide, entrelacé entre cours (SCI-004), confiance déclarée et calibration (SCI-002) ;
+  écoute de la fiche avec voix **locales** uniquement.
+- **P1 (reste)** : brancher le Studio sur les sources d’`academic-workspace` ; décider si une réussite à l’examen
+  blanc peut devenir une preuve canonique *via* les règles existantes (décision humaine) ; relier difficultés ↔
+  SCI-006 ; évaluer FSRS sur historique réel contre `CURRENT_V1` ; tuteur LLM local (WebGPU) derrière le même contrat.
+- **P2** : annotations PDF ; OCR local des PDF scannés ; Audio Overview étendue puis fournisseur Enterprise optionnel ;
   conversations orales immersives (anglais) ; mode hors ligne complet (service worker).
 
 ## 8. Fondements scientifiques et limites
@@ -174,5 +177,10 @@ cité ; refus explicite hors sources ou hors sélection ; aucune écriture canon
 de l’interface trois colonnes.
 
 Limites du prototype : réponses extractives (pas de reformulation), extraction de définitions par motifs
-(« X est… », « X sert à… ») adaptée à des cours bien rédigés, documents synthétiques uniquement, pas d’Audio Overview,
-pas d’annotations, pas de service worker.
+(« X est… », « X sert à… ») adaptée à des cours bien rédigés, pas d’OCR (PDF scannés refusés), pas d’annotations,
+pas de service worker.
+
+Leçons d’implémentation (vérifiées par les tests) : un seuil BM25 absolu échoue sur de petits documents personnels
+(IDF quasi nul) → la répondabilité repose sur la couverture des termes de la question ; pdf.js extrait les ligatures
+typographiques en fragments (« modi fi er ») → réparées avant découpage ; les voix « en ligne » du navigateur
+enverraient le texte à un service externe → seules les voix `localService` sont utilisées.
