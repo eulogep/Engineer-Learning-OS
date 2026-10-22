@@ -78,6 +78,14 @@ export type StudioQuizAttempt = Readonly<{
   assisted: boolean;
   mode?: "QUIZ" | "MOCK_EXAM";
   durationSeconds?: number;
+  pendingResponses?: readonly Readonly<{
+    questionId: string;
+    response: string;
+    prompt: string;
+    citations: readonly StudioCitation[];
+    status: "PENDING_HUMAN_VALIDATION";
+    confidence: Confidence;
+  }>[];
   items: readonly Readonly<{ questionId: string; cardId: string; correct: boolean; confidence?: Confidence }>[];
 }>;
 

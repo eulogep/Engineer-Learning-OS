@@ -57,6 +57,7 @@ export function LearningStudio() {
   const [chapterFilter, setChapterFilter] = useState("");
   const [selected, setSelected] = useState<string[]>(SYNTHETIC_DOCUMENTS.map((document) => document.id));
   const [center, setCenter] = useState<"TUTOR" | "EXAM">("TUTOR");
+  const [examActive, setExamActive] = useState(false);
   const [openId, setOpenId] = useState(SYNTHETIC_DOCUMENTS[0].id);
   const [focus, setFocus] = useState<Focus>(null);
   const [query, setQuery] = useState("");
@@ -161,9 +162,9 @@ export function LearningStudio() {
         <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-800"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />100 % local · aucune IA externe</Badge>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)_minmax(300px,380px)]">
+      <div className={examActive ? "mx-auto max-w-3xl" : "grid gap-4 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)_minmax(300px,380px)]"}>
         {/* Library */}
-        <aside aria-label="Bibliothèque de sources" className="space-y-4">
+        <aside aria-label="Bibliothèque de sources" className="space-y-4" hidden={examActive}>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4" aria-hidden="true" />Bibliothèque</CardTitle></CardHeader>
             <CardContent className="space-y-2">
@@ -243,12 +244,12 @@ export function LearningStudio() {
         <section aria-label="Professeur" className="order-first space-y-4 lg:order-none">
           <div role="tablist" aria-label="Mode d’étude" className="inline-flex rounded-lg border bg-white p-1">
             {([["TUTOR", "Professeur"], ["EXAM", "Examen blanc"]] as const).map(([value, label]) => (
-              <button key={value} type="button" role="tab" aria-selected={center === value} onClick={() => setCenter(value)}
+              <button key={value} type="button" role="tab" disabled={examActive} aria-selected={center === value} onClick={() => setCenter(value)}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium ${center === value ? "bg-emerald-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>
             ))}
           </div>
           {center === "EXAM" ? (
-            <MockExamPanel documents={documents} onFinished={(attempt) => persist({ ...state, attempts: [...state.attempts, attempt] })}
+            <MockExamPanel documents={documents} onActiveChange={setExamActive} onFinished={(attempt) => persist({ ...state, attempts: [...state.attempts, attempt] })}
               renderCitation={(citation) => <CitationChip citation={citation} onOpen={open} documents={library} />} />
           ) : <>
           <Card>
@@ -312,7 +313,7 @@ export function LearningStudio() {
         </section>
 
         {/* Tools */}
-        <aside aria-label="Outils d’apprentissage">
+        <aside aria-label="Outils d’apprentissage" hidden={examActive}>
           <Card>
             <CardContent className="pt-4">
               <Tabs defaultValue="cards">

@@ -66,6 +66,30 @@ browser integration coverage before the full mission is considered validated.
 - SCI-006 links, targeted remediation, offline/recovery/mobile/accessibility
   verification, full regression and build.
 
+## Exam increment
+
+The existing exam engine now accepts a bounded duration (1–180 minutes) and
+optional free responses. Definition-based open prompts and technical PHP/SQL
+analysis prompts are derived from selected passages; code is never executed.
+The technical prompt includes the source code as the exercise stimulus, not an
+invented correction. Strict UI mode hides the library and revision tools and
+disables switching to the tutor until submission. Answer handlers check the
+deadline even between timer ticks. This is a study constraint, not a proctoring
+or anti-tamper guarantee.
+
+Open responses are stored as `PENDING_HUMAN_VALIDATION`, with prompts, answers,
+confidence and exact citations. They are excluded from automatic scores,
+calibration and observed errors, including when a response copies the reference.
+The correction displays the source excerpt and a human-review checklist. This
+does not yet implement a validated technical rubric or canonical assessment.
+The current UI explicitly labels selected sources as a training scope, not a
+confirmed official exam scope. Scope confirmation remains required follow-up.
+
+Tests: `tests/unit/learning-studio/open-exam.test.ts` covers duration limits,
+pending-response persistence, source-grounded code exercises and deadline bounds.
+The existing full suite also checks canonical IndexedDB recovery; it does not
+replace browser testing of this new Studio UI or its schema-3 import pipeline.
+
 ## Rollback
 
 Keep the pre-integration branch and commits intact. Revert integration commits
