@@ -16,6 +16,7 @@ import {
   type GroundedAnswer, type KeyValueStorage, type StudioState,
 } from "@/modules/learning-studio/core";
 import { SYNTHETIC_DOCUMENTS } from "@/modules/learning-studio/fixtures";
+import { derivePrerequisites, remediationPath } from "@/modules/learning-studio/prerequisites";
 import { deleteImportedDocument, listImportedDocuments } from "@/modules/learning-studio/browser-library";
 import { ImportPanel } from "@/components/learning-studio/ImportPanel";
 import { AcademicCataloguePanel } from "@/components/learning-studio/AcademicCataloguePanel";
@@ -98,7 +99,9 @@ export function LearningStudio() {
   const openDocument = library.find((document) => document.id === openId) ?? SYNTHETIC_DOCUMENTS[0];
   const today = dayKey(new Date());
   const plan = useMemo(() => revisionPlan(cards.map((card) => card.id), state.reviews, today), [cards, state.reviews, today]);
-  const board = useMemo(() => difficulties(state.attempts, deriveFlashcards(library)), [state.attempts, library]);
+  const allCards = useMemo(() => deriveFlashcards(library), [library]);
+  const board = useMemo(() => difficulties(state.attempts, allCards), [state.attempts, allCards]);
+  const relations = useMemo(() => derivePrerequisites(allCards), [allCards]);
   const dueCards = cards.filter((card) => plan[0]?.due.includes(card.id));
   const currentCard = dueCards[cardIndex % Math.max(1, dueCards.length)];
 
@@ -394,7 +397,27 @@ export function LearningStudio() {
                   <div>
                     <p className="text-sm font-medium">Difficultés</p>
                     {board.length === 0 ? <p className="text-xs text-slate-500">Aucune erreur enregistrée pour l’instant.</p>
-                      : <ul className="mt-1 space-y-1 text-sm">{board.slice(0, 6).map((entry) => <li key={entry.term} className="flex justify-between"><span>{entry.term}</span><span className="text-red-700">{entry.errors}/{entry.attempts}</span></li>)}</ul>}
+                      : <ul className="mt-1 space-y-2 text-sm">{board.slice(0, 6).map((entry) => {
+                        const path = remediationPath(entry.term, allCards, relations);
+                        return (
+                          <li key={entry.term} className="rounded-md border p-2">
+                            <div className="flex justify-between"><span className="font-medium">{entry.term}</span><span className="text-red-700">{entry.errors}/{entry.attempts}</span></div>
+                            {path.prerequisites.length > 0 && (
+                              <div className="mt-1 text-xs text-slate-600">
+                                Revois d’abord :{" "}
+                                {path.prerequisites.map((step, index) => (
+                                  <span key={step.term}>
+                                    {index > 0 && " → "}
+                                    {step.card ? <button type="button" className="text-emerald-800 underline-offset-2 hover:underline" onClick={() => open(step.card!.citations[0])}>{step.term}</button> : step.term}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {path.confusedWith.length > 0 && <p className="mt-1 text-xs text-amber-800">Souvent confondu avec : {path.confusedWith.join(", ")}</p>}
+                          </li>
+                        );
+                      })}</ul>}
+                    <p className="mt-2 text-[11px] text-slate-500">Prérequis déduits des définitions de tes cours : une piste de révision, pas une preuve de dépendance.</p>
                   </div>
                 </TabsContent>
               </Tabs>
