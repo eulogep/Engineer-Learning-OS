@@ -16,6 +16,7 @@
   <a href="https://daily-english-mission-ten.vercel.app/presentation"><b>🎬 Presentation</b></a> •
   <a href="#-live-demo"><b>🚀 Live Demo</b></a> •
   <a href="#-key-features">Features</a> •
+  <a href="#-ai-agent-integration-hermes--mcp">AI Agent</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-operational-modules">Modules</a> •
@@ -49,7 +50,7 @@
 
 Traditional e-learning platforms rely on **passive video watching**, **superficial badges**, and **arbitrary completion percentages** that fail to build real engineering intuition.
 
-**Engineer Learning OS** is a local-first platform designed to turn engineering course materials and technical challenges into **verifiable mastery**. It combines **zero-hallucination document extraction**, **grounded academic quizzes**, **spaced error retrieval**, and **integrated technical English** into a distraction-free modular monolith.
+**Engineer Learning OS** is a local-first platform designed to turn engineering course materials and technical challenges into **verifiable mastery**. It combines **zero-hallucination document extraction**, **grounded academic quizzes**, **spaced error retrieval**, and **integrated technical English** into a distraction-free modular monolith — and it can follow you to your phone through a **local AI tutor** (Hermes Agent over MCP) on Telegram and WhatsApp.
 
 > ⚡ **Core Philosophy:** No fake progress. Every competency level (`NOT_SEEN` ➔ `PRACTICED` ➔ `VERIFIED`) is derived purely from **auditable, reproducible evidence records**.
 
@@ -99,6 +100,40 @@ Traditional e-learning platforms rely on **passive video watching**, **superfici
 - **Context-Aware Practice:** Confidence calibration, bounded assistance, semantic self-explanation, transfer evidence, and curated concept relations inform the next action.
 - **Canonical Shadow Projection:** The policy reads privacy-safe IndexedDB event metadata without rewriting EventIds or independently awarding mastery.
 
+### 📚 7. Learning Studio (`learning-studio`) — `/studio`
+- **Your own courses, on your device:** import PDF, Markdown or text files; text is extracted with PDF.js in the browser, and scanned PDFs are read by **on-device OCR** (tesseract.js, French model vendored — no upload).
+- **Cited answers only:** questions are answered with sentences quoted from your sources (page or section), or the Studio says the sources do not contain the answer. A Socratic mode gives graduated hints instead.
+- **Study material from the sources:** flashcards, quizzes, revision sheets, mind maps, prerequisite paths, an audio overview read by a local voice, annotations, and timed **mock exams** — all marked `DERIVED_MATERIAL`, never mastery.
+- **Scheduling:** Leitner ladder by default, with an optional **FSRS-4.5** scheduler (evaluated by replay on real public review logs, where it beat Leitner on log-loss).
+- **Programme import with quality audit:** a pedagogical base export (courses, exercises, flashcards) becomes a course map; an automatic audit blocks guessable multiple-choice banks (correct answer always the longest, generic distractors) and copy-pasted flashcards.
+- **Offline:** a service worker keeps the app usable without a network.
+
+### 🗣️ 8. Daily English Mission (`daily-english`) — `/daily-english`
+- **150 words in 5 packs** (core, networking, cybersecurity, meetings, career) with Leitner spaced review and a daily mission.
+- **Hand-written professional roleplays** (stand-up, incident report, apprenticeship interview) evaluated locally, plus on-device Whisper transcription and a full local backup / restore.
+
+---
+
+## 🤖 AI Agent Integration (Hermes + MCP)
+
+Engineer Learning OS ships a local **[Model Context Protocol](https://modelcontextprotocol.io/) server** (`mcp/elos-server.ts`) so a personal agent such as **Hermes Agent** can tutor you — including from **Telegram and WhatsApp** on your phone.
+
+| Tool | What the agent can do |
+|---|---|
+| `elos_ask_sources` | Answer only with quoted sentences from your course files (page citations), or a Socratic question with hints |
+| `elos_study_pack` | Flashcards, quiz, revision sheet, audio overview script, prerequisite paths |
+| `elos_course_map` | Programme map: objectives, prerequisites, worked example, analogy, frequent mistakes, quality audit |
+| `elos_course_exercise` | Multiple-choice questions built from **your own course files** for a chapter, with citations; answer revealed only after your attempt; missed questions come back first (`retry`) |
+| `elos_today` · `elos_progress` · `elos_exam_plan` | What to study today, progress, exam countdown with spaced sessions (read-only snapshot) |
+| `elos_correct_english` · `elos_roleplay` · `elos_vocabulary` | Local English correction, roleplays, vocabulary |
+| `elos_compare_schedulers` | Replay review logs: FSRS-4.5 vs Leitner |
+
+- **Daily rhythm:** a morning coach at 8:00 and an evening review at 19:00 (missed questions to redo) are delivered to Telegram/WhatsApp by Hermes cron jobs — deterministic messages, no model involved.
+- **Two-way, read-only by design:** the app shares a minimal snapshot (`elos-state.json`); the agent writes back practice counts per chapter (`elos-practice.json`), shown in the app as assisted practice that **never changes a mastery level**.
+- **Guard rails:** course files are read only from `ELOS_SOURCES_DIR`; `knowledge-private/`, secrets and path traversal are refused; answer keys are kept outside the folder the agent browses (`npm run mcp:split-base`); scanned PDFs are OCR'd on the Mac with Apple Vision and cached outside the shared folder.
+
+Setup, privacy notes and cron recipes: **[`docs/integrations/HERMES.md`](docs/integrations/HERMES.md)**.
+
 ---
 
 ## 🖼️ Product Tour
@@ -135,6 +170,13 @@ flowchart TD
         Review["/review (Spaced Retrieval)"]
         Evidence["/evidence (Audit Trail)"]
         Progress["/progress (Competency Matrix)"]
+        Studio["/studio (Learning Studio)"]
+        English["/daily-english (Missions & Roleplays)"]
+    end
+
+    subgraph Agent ["🤖 Local Agent Bridge"]
+        MCP["mcp/elos-server.ts\n(MCP stdio, 11 tools)"]
+        Hermes["Hermes Agent\n(Telegram · WhatsApp · cron)"]
     end
 
     subgraph Core ["🧠 Pure Business Modules (src/modules/)"]
@@ -148,6 +190,8 @@ flowchart TD
         DM["deep-mastery\n(Mental Model Invariants)"]
         MR["mission-runtime\n(Active Time & Session Engine)"]
         SP["scientific-pedagogy\n(Evidence-Informed Policy)"]
+        LS["learning-studio\n(Cited Answers, Exams, Programme Audit)"]
+        SN["learner-snapshot\n(Agent Bridge & Coach)"]
     end
 
     subgraph Infra ["🔌 Infrastructure & Local Storage"]
@@ -161,6 +205,8 @@ flowchart TD
 
     UI --> Core
     Core --> Infra
+    Hermes --> MCP
+    MCP --> Core
 ```
 
 ---
@@ -192,7 +238,14 @@ npm test            # node:test suites, no extra flag needed
 ```
 `npm test` runs the unit and integration suites with Node's built-in test runner. A small resolver (`tests/register-loader.mjs`) is registered automatically, so the command works as written from a fresh clone.
 
-### 4. Build for Production
+### 4. Optional: connect a local agent
+```bash
+npm run mcp:elos                     # MCP server over stdio (see docs/integrations/HERMES.md)
+npm run mcp:ocr                      # pre-OCR scanned PDFs on macOS (Apple Vision), cached locally
+npm run mcp:split-base -- <base> <private dir>   # move a pedagogical base's answer key out of the shared folder
+```
+
+### 5. Build for Production
 ```bash
 npm run build
 ```
@@ -217,6 +270,10 @@ src/modules/
 ├── deep-mastery/             # Deliberate practice on fundamental invariants (CSV, encodings)
 ├── scientific-pedagogy/      # Evidence-traceable scheduling, assistance, calibration, transfer policy
 ├── technical-english/        # Spoken/written technical English & audio evidence persistence
+├── learning-studio/          # Source library, cited answers, OCR import, mock exams, programme audit, chapter practice
+├── learner-snapshot/         # Agent snapshot, practice summary from the agent, morning & evening coach messages
+├── daily-english/            # 150-word vocabulary, Leitner review, roleplays, local correction, backup
+├── local-speech/             # On-device Whisper transcription & pronunciation feedback
 └── mission-runtime/          # Multi-step interactive mission runner & active time tracking
 ```
 
@@ -234,6 +291,10 @@ src/modules/
 | `/evidence` | **Preuves** | Auditable chronological evidence stream of learner attempts |
 | `/progress` | **Progression** | Honest competency graph derived strictly from verified evidence |
 | `/daily-english` | **Daily English** | Daily interactive speaking and vocabulary practice |
+| `/daily-english/roleplay` | **Roleplays** | Professional English roleplays evaluated locally |
+| `/studio` | **Learning Studio** | Your own course files: cited answers, flashcards, quizzes, mock exams, audio overview |
+| `/data` | **Données** | Backup / restore and the local agent (Hermes) bridge with practice done on your phone |
+| `/presentation` | **Présentation** | 100-second product video with captions |
 
 ---
 
@@ -242,6 +303,7 @@ src/modules/
 - 🔒 **Bounded data flow:** Proprietary documents, internal spreadsheets, private audio, and credentials stay outside Git and remote sync; only metadata classified `SYNC_ALLOWED` can enter the guarded outbox.
 - 🧱 **Local automation is opt-in:** the NotebookLM browser-automation bridge (`POST /api/notebooklm/execute`) answers `404` and starts nothing unless `ELOS_NOTEBOOKLM_AUTOMATION=ENABLED` is set in the **server** environment. Even then it only accepts same-origin JSON requests addressed to `localhost`, and it refuses hosted platforms and proxied requests. Never enable it on a deployed instance.
 - 🧪 **Synthetic Fixtures Only:** All automated tests use 100% synthetic, non-sensitive fixtures (`TRAINING_SYNTHETIC`).
+- 🤖 **Agent boundaries:** the MCP server only reads the course folder you configure and refuses private folders and secrets. Anything it returns is sent by the agent to *its* model provider — the snapshot it shares never contains your sentences, transcriptions, notes or answers.
 - 🌐 **Offline by Default:** Document extraction, audio recording, quiz grading, and competency derivation run entirely on your local machine without mandatory network calls.
 
 ---
@@ -250,9 +312,9 @@ src/modules/
 
 ```text
 learning-os, local-first, privacy-first, edtech, deliberate-practice,
-spaced-repetition, leitner-system, competency-tracking, technical-english,
-english-learning, vocabulary-builder, document-extraction, docling, pdfjs,
-nextjs, react, typescript, tailwindcss, indexeddb, cybersecurity-education
+spaced-repetition, fsrs, competency-tracking, technical-english,
+english-learning, mcp, model-context-protocol, ai-tutor, ocr, pdfjs,
+nextjs, react, typescript, indexeddb, cybersecurity-education
 ```
 
 ---
