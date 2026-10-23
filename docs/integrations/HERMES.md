@@ -59,3 +59,23 @@ Garde-fous : seuls `.pdf`, `.md`, `.txt` sous ce dossier ; `knowledge-private/`,
 N’y mets pas de documents d’entreprise internes, de données personnelles d’autrui ni de secrets.
 
 Le serveur est lancé depuis ce dépôt : garde une branche qui contient `mcp/` (par exemple `main-public`).
+
+## Coach du matin (tâche planifiée Hermes, sans modèle)
+
+`scripts/morning-coach.ts` construit chaque matin un message à partir du résumé : série, révisions dues, question de
+rappel (difficulté principale), mot d’anglais du jour, réplique de jeu de rôle, compte à rebours d’examen. Aucun modèle
+d’IA, aucun réseau : le message est écrit dans `coach-du-jour.md` à côté du résumé et affiché en notification macOS.
+
+```bash
+cat > ~/.hermes/scripts/elos-morning-coach.sh <<'SH'
+#!/bin/bash
+cd "$HOME/Desktop/Developer/daily-english-mission" || exit 1
+ELOS_STATE_FILE="$HOME/ELOS-Hermes/elos-state.json" exec "$(command -v node)" --experimental-strip-types --no-warnings \
+  --import ./tests/register-loader.mjs scripts/morning-coach.ts --notify
+SH
+chmod +x ~/.hermes/scripts/elos-morning-coach.sh
+hermes cron create "0 8 * * *" --name "ELOS coach du matin" --script elos-morning-coach.sh --no-agent --deliver local
+```
+
+Avec une messagerie configurée dans Hermes (`hermes gateway setup`), remplace `--deliver local` par `telegram`,
+`signal`… Le contenu (vocabulaire, jeux de rôle, intitulés de notions) est générique ; aucun passage de cours n’y figure.
