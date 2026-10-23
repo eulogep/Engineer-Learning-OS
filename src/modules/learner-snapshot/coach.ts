@@ -1,5 +1,6 @@
 import { VOCABULARY } from "../daily-english/vocabulary";
 import { ROLEPLAY_SCENARIOS } from "../daily-english/roleplay";
+import type { AgentPractice } from "./agent-practice";
 import type { LearnerSnapshot } from "./core";
 
 /**
@@ -50,5 +51,33 @@ export function buildMorningMessage(snapshot: LearnerSnapshot | null, now: Date)
     lines.push("", `🎯 ${exam.course} dans ${exam.daysLeft} jour${exam.daysLeft > 1 ? "s" : ""} : ${advice}.`);
   }
   lines.push("", "https://daily-english-mission-ten.vercel.app/studio");
+  return lines.join("\n");
+}
+
+/**
+ * Evening review built from the practice done with the agent (elos-practice.json):
+ * what to redo before sleeping, retrieval first. Counts and chapter titles only.
+ */
+export function buildEveningMessage(practice: AgentPractice | null, now: Date): string {
+  const date = now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const lines = [`🌙 ELOS — révision du soir, ${date}`];
+  const today = now.toISOString().slice(0, 10);
+  const chapters = practice?.chapters ?? [];
+  const practisedToday = chapters.filter((chapter) => chapter.lastAt.startsWith(today));
+  const retry = chapters.filter((chapter) => chapter.toRetry > 0).sort((a, b) => b.toRetry - a.toRetry || b.lastAt.localeCompare(a.lastAt));
+
+  if (practisedToday.length) {
+    lines.push(`✅ Aujourd’hui : ${practisedToday.map((chapter) => chapter.title).join(", ")}.`);
+  }
+  if (retry.length) {
+    lines.push("", "↩️ À refaire avant de dormir (un rappel le soir aide à retenir) :");
+    for (const chapter of retry.slice(0, 3)) lines.push(`   • ${chapter.title} : ${chapter.toRetry} question${chapter.toRetry > 1 ? "s" : ""} ratée${chapter.toRetry > 1 ? "s" : ""}`);
+    lines.push("", "Réponds « repose mes questions ratées » pour les refaire maintenant.");
+  } else if (chapters.length) {
+    lines.push("", "👏 Aucune question ratée en attente. Réponds « un QCM sur … » avec un chapitre pour avancer.");
+  } else {
+    lines.push("", "Pas encore d’entraînement avec moi. Réponds « quel est mon programme ? » puis « un QCM sur … » pour commencer.");
+  }
+  lines.push("", "C’est de l’entraînement : la maîtrise se prouve dans ELOS, sans aide.");
   return lines.join("\n");
 }

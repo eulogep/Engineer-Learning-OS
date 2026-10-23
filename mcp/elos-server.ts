@@ -451,10 +451,26 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
 
   server.registerTool("elos_course_exercise", {
     title: "Practice exercise with answer revealed after the attempt",
-    description: `Practice on a programme chapter. With chapter_id: one exercise, statement only. By default (source "courses") a multiple-choice question built from the learner's own course files, with a page citation, preferring questions missed before; otherwise (or with source "base") an exercise of the pedagogical base. Multiple-choice questions that failed the quality audit are never served. With exercise_id and the learner's answer (a letter A-D or the option text for a multiple-choice question): the correction; course questions are graded and logged as practice (DERIVED_PRACTICE, never mastery). Never reveal a solution before the learner has answered. ${baseNote}`,
-    inputSchema: { chapter_id: z.string().optional(), exercise_id: z.string().optional(), answer: z.string().min(1).max(5000).optional(), source: z.enum(["courses", "base"]).default("courses") },
-  }, async ({ chapter_id, exercise_id, answer, source }) => {
+    description: `Practice on a programme chapter. With chapter_id: one exercise, statement only. By default (source "courses") a multiple-choice question built from the learner's own course files, with a page citation, preferring questions missed before; otherwise (or with source "base") an exercise of the pedagogical base. Multiple-choice questions that failed the quality audit are never served. With retry: true: a missed course question to redo (optionally limited to chapter_id). With exercise_id and the learner's answer (a letter A-D or the option text for a multiple-choice question): the correction; course questions are graded and logged as practice (DERIVED_PRACTICE, never mastery). Never reveal a solution before the learner has answered. ${baseNote}`,
+    inputSchema: { chapter_id: z.string().optional(), exercise_id: z.string().optional(), answer: z.string().min(1).max(5000).optional(), source: z.enum(["courses", "base"]).default("courses"),
+      retry: z.boolean().default(false).describe("true: ask again a course question whose latest answer was wrong, any chapter (most recent first)") },
+  }, async ({ chapter_id, exercise_id, answer, source, retry }) => {
     const bases = loadBases(env);
+    if (retry && !exercise_id) {
+      const latest = new Map<string, PracticeEntry>();
+      for (const entry of root ? readPractice(practiceLogFile(root, env)) : []) latest.set(entry.questionId, entry);
+      const missed = [...latest.values()].filter((entry) => !entry.correct && (!chapter_id || entry.chapterId === chapter_id)).sort((a, b) => b.at.localeCompare(a.at));
+      const documents = missed.length ? await loadSources(root, env) : [];
+      for (const entry of missed) {
+        const parsed = parseSourceQuestionId(entry.questionId);
+        const chapter = parsed && findChapter(parsed[0]);
+        const question = chapter && chapterSourceQuiz(documents, chapter, 50).find((item) => item.cardId === parsed[1]);
+        if (!chapter || !question) continue;
+        return json({ exercise_id: entry.questionId, type: "qcm_from_courses", retry: true, chapter: chapter.title, missedRemaining: missed.length, prompt: question.prompt,
+          options: question.choices.map((choice, index) => `${String.fromCharCode(65 + index)}. ${choice}`) });
+      }
+      return json({ retry: true, message: "No missed course question waiting: suggest a new chapter (elos_course_map)." });
+    }
     if (exercise_id?.startsWith("src:")) {
       const parsed = parseSourceQuestionId(exercise_id);
       const chapter = parsed && findChapter(parsed[0]);
