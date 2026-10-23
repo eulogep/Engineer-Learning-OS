@@ -7,14 +7,17 @@
 // knowledge-private/, secret files and paths outside the root are refused.
 //
 // Run: node --experimental-strip-types --import ./tests/register-loader.mjs mcp/elos-server.ts
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { execFile, execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { promisify } from "node:util";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { answerFromSources, deriveFlashcards, deriveQuiz, revisionSheet, socraticPrompt } from "../src/modules/learning-studio/core.ts";
 import { SYNTHETIC_DOCUMENTS } from "../src/modules/learning-studio/fixtures.ts";
-import { buildImportedDocument, textToSections, type RawPage } from "../src/modules/learning-studio/import.ts";
+import { buildImportedDocument, pagesNeedingOcr, textToSections, type RawPage } from "../src/modules/learning-studio/import.ts";
 import { buildAudioOverview } from "../src/modules/learning-studio/overview.ts";
 import { derivePrerequisites, remediationPath } from "../src/modules/learning-studio/prerequisites.ts";
 import type { StudioDocument } from "../src/modules/learning-studio/types.ts";
@@ -41,7 +44,7 @@ export function allowedPath(root: string, candidate: string): string {
   return resolved;
 }
 
-function listFiles(root: string): string[] {
+export function listFiles(root: string): string[] {
   const out: string[] = [];
   const walk = (dir: string) => {
     for (const name of readdirSync(dir).sort()) {
@@ -75,6 +78,75 @@ async function pdfPages(file: string): Promise<RawPage[]> {
   }
 }
 
+// --- On-device OCR for scanned PDFs (macOS Vision via mcp/ocr-vision.swift) -------------------
+// Results are cached outside the shared folder (ELOS_CACHE_DIR, default <sources>/../.elos-cache)
+// and computed in the background so a first question never waits for a long OCR run.
+
+export function cacheDir(root: string, env: NodeJS.ProcessEnv = process.env): string {
+  return path.resolve(env.ELOS_CACHE_DIR?.trim() || path.join(path.dirname(root), ".elos-cache"));
+}
+
+let ocrBinary: string | null | undefined;
+function ensureOcrBinary(cache: string, env: NodeJS.ProcessEnv): string | null {
+  if (ocrBinary !== undefined) return ocrBinary;
+  ocrBinary = null;
+  if (process.platform !== "darwin" || env.ELOS_OCR === "off") return null;
+  const source = path.join(path.dirname(new URL(import.meta.url).pathname), "ocr-vision.swift");
+  const hash = createHash("sha256").update(readFileSync(source)).digest("hex").slice(0, 12);
+  const binary = path.join(cache, `elos-ocr-${hash}`);
+  try {
+    if (!existsSync(binary)) { mkdirSync(cache, { recursive: true, mode: 0o700 }); execFileSync("swiftc", ["-O", source, "-o", binary], { stdio: "ignore", timeout: 300_000 }); }
+    ocrBinary = binary;
+  } catch { ocrBinary = null; }
+  return ocrBinary;
+}
+
+const run = promisify(execFile);
+const ocrQueue: string[] = [];
+let ocrRunning = false;
+
+function ocrCacheFile(cache: string, file: string): string {
+  return path.join(cache, "ocr", `${createHash("sha256").update(readFileSync(file)).digest("hex")}.json`);
+}
+
+export function cachedOcr(cache: string, file: string): RawPage[] | null {
+  try { return (JSON.parse(readFileSync(ocrCacheFile(cache, file), "utf8")) as { pages: RawPage[] }).pages; } catch { return null; }
+}
+
+/** OCRs one PDF now (used by the background queue and by `npm run mcp:ocr`). */
+export async function ocrNow(cache: string, file: string, env: NodeJS.ProcessEnv = process.env): Promise<RawPage[] | null> {
+  const existing = cachedOcr(cache, file);
+  if (existing) return existing;
+  const binary = ensureOcrBinary(cache, env);
+  if (!binary) return null;
+  const { stdout } = await run(binary, [file], { maxBuffer: 64 * 1024 * 1024, timeout: 600_000 });
+  const pages = (JSON.parse(stdout) as { pages: RawPage[] }).pages;
+  mkdirSync(path.join(cache, "ocr"), { recursive: true, mode: 0o700 });
+  writeFileSync(ocrCacheFile(cache, file), JSON.stringify({ file: path.basename(file), pages }), { mode: 0o600 });
+  return pages;
+}
+
+function scheduleOcr(cache: string, file: string, env: NodeJS.ProcessEnv): void {
+  if (ocrQueue.includes(file)) return;
+  ocrQueue.push(file);
+  if (ocrRunning) return;
+  ocrRunning = true;
+  void (async () => {
+    while (ocrQueue.length) {
+      const next = ocrQueue.shift() as string;
+      try { await ocrNow(cache, next, env); extracted.delete(next); } catch { /* unreadable: stays text-only */ }
+    }
+    ocrRunning = false;
+  })();
+}
+
+/** Merges OCR text into the pages that have no text layer; flags them as OCR. */
+function withOcr(pages: RawPage[], ocr: RawPage[] | null): RawPage[] {
+  if (!ocr) return pages;
+  const missing = new Set(pagesNeedingOcr(pages));
+  return pages.map((page) => (missing.has(page.pageNumber) ? { pageNumber: page.pageNumber, text: ocr.find((item) => item.pageNumber === page.pageNumber)?.text ?? "", ocr: true } : page));
+}
+
 /** Extraction cache: a file is parsed again only when its size or modification time changes. */
 const extracted = new Map<string, { key: string; document: StudioDocument | null }>();
 
@@ -82,8 +154,9 @@ const extracted = new Map<string, { key: string; document: StudioDocument | null
  * Loads the learner's course files (or the synthetic demo documents when no root is configured).
  * Folder layout: <subject>/<origin or year>/... — the first folder becomes the subject.
  */
-export async function loadSources(root: string | null): Promise<StudioDocument[]> {
+export async function loadSources(root: string | null, env: NodeJS.ProcessEnv = process.env): Promise<StudioDocument[]> {
   if (!root) return [...SYNTHETIC_DOCUMENTS];
+  const cache = cacheDir(root, env);
   const documents: StudioDocument[] = [];
   const seen = new Set<string>();
   for (const file of listFiles(root)) {
@@ -98,7 +171,12 @@ export async function loadSources(root: string | null): Promise<StudioDocument[]
     let document: StudioDocument | null = null;
     try {
       const pdf = /\.pdf$/i.test(file);
-      const pages = pdf ? await pdfPages(file) : textToSections(readFileSync(file, "utf8"));
+      let pages = pdf ? await pdfPages(file) : textToSections(readFileSync(file, "utf8"));
+      if (pdf && pagesNeedingOcr(pages).length > 0) {
+        const ocr = cachedOcr(cache, file);
+        if (ocr) pages = withOcr(pages, ocr);
+        else scheduleOcr(cache, file, env);
+      }
       document = buildImportedDocument(`file:${relative}`, metadata, pages, pdf ? "page" : "section", new Date(info.mtimeMs));
     } catch {
       document = null; // unreadable or scanned file: skipped (no OCR in the agent server, nothing invented)
@@ -113,7 +191,8 @@ export async function loadSources(root: string | null): Promise<StudioDocument[]
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
 const cite = (documents: readonly StudioDocument[], citation: { documentId: string; pageNumber: number; quote: string }) => {
   const document = documents.find((item) => item.id === citation.documentId);
-  return { source: document?.title ?? citation.documentId, [document?.unit === "section" ? "section" : "page"]: citation.pageNumber, quote: citation.quote };
+  const ocr = document?.pages.find((page) => page.pageNumber === citation.pageNumber)?.ocr === true;
+  return { source: document?.title ?? citation.documentId, [document?.unit === "section" ? "section" : "page"]: citation.pageNumber, quote: citation.quote, ...(ocr ? { ocr: "text recognised from a scan: verify against the page" } : {}) };
 };
 
 const STALE_MS = 24 * 3_600_000;
@@ -141,7 +220,7 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
     description: `Answer a question ONLY with sentences quoted from the learner's course sources, with page/section citations; says so when the sources do not contain the answer. mode "socratic" returns a guiding question and graduated hints instead of the answer. ${sourceNote} ${privacy}`,
     inputSchema: { question: z.string().min(2), mode: z.enum(["sourced", "socratic"]).default("sourced") },
   }, async ({ question, mode }) => {
-    const documents = await loadSources(root);
+    const documents = await loadSources(root, env);
     if (mode === "socratic") {
       const prompt = socraticPrompt(documents, question);
       return json(prompt ? { question: prompt.question, hints: prompt.hints.map((hint) => hint.text), citations: prompt.citations.map((c) => cite(documents, c)) }
@@ -156,7 +235,7 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
     description: `Derive study material from the course sources: flashcards, quiz, revision sheet, audio overview script or prerequisite paths. Every item is cited and DERIVED (never counts as mastery). ${sourceNote} ${privacy}`,
     inputSchema: { kind: z.enum(["flashcards", "quiz", "sheet", "audio_overview", "prerequisites"]), limit: z.number().int().min(1).max(50).default(10) },
   }, async ({ kind, limit }) => {
-    const documents = await loadSources(root);
+    const documents = await loadSources(root, env);
     const cards = deriveFlashcards(documents);
     if (kind === "flashcards") return json(cards.slice(0, limit).map((card) => ({ front: card.term, back: card.definition, citation: cite(documents, card.citations[0]) })));
     if (kind === "quiz") return json(deriveQuiz(documents, limit).map((q) => ({ prompt: q.prompt, choices: q.choices, answer: q.answer, citation: cite(documents, q.citations[0]) })));
