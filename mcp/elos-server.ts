@@ -24,7 +24,7 @@ import { VOCABULARY, VOCABULARY_PACKS } from "../src/modules/daily-english/vocab
 import { replaySchedulers, type ReviewEvent } from "../src/modules/scientific-pedagogy/replay.ts";
 import { parseLearnerSnapshot, type LearnerSnapshot } from "../src/modules/learner-snapshot/core.ts";
 
-const MAX_FILES = 200;
+const MAX_FILES = 1000;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const FORBIDDEN = /(^|[\\/])(knowledge-private|\.git|node_modules)([\\/]|$)|\.(secret|private|env)$|(^|[\\/])\.env/i;
 
@@ -75,21 +75,38 @@ async function pdfPages(file: string): Promise<RawPage[]> {
   }
 }
 
-/** Loads the learner's course files (or the synthetic demo documents when no root is configured). */
+/** Extraction cache: a file is parsed again only when its size or modification time changes. */
+const extracted = new Map<string, { key: string; document: StudioDocument | null }>();
+
+/**
+ * Loads the learner's course files (or the synthetic demo documents when no root is configured).
+ * Folder layout: <subject>/<origin or year>/... — the first folder becomes the subject.
+ */
 export async function loadSources(root: string | null): Promise<StudioDocument[]> {
   if (!root) return [...SYNTHETIC_DOCUMENTS];
   const documents: StudioDocument[] = [];
+  const seen = new Set<string>();
   for (const file of listFiles(root)) {
+    seen.add(file);
+    const info = statSync(file);
+    const key = `${info.size}:${info.mtimeMs}`;
+    const cached = extracted.get(file);
+    if (cached?.key === key) { if (cached.document) documents.push(cached.document); continue; }
     const relative = path.relative(root, file);
-    const metadata = { title: relative, subjectLabel: path.dirname(relative) === "." ? "Mes cours" : path.dirname(relative), chapter: "", docType: "COURS" as const };
+    const [subject, origin] = relative.split(path.sep);
+    const metadata = { title: relative, subjectLabel: relative.includes(path.sep) ? subject : "Mes cours", chapter: relative.split(path.sep).length > 2 ? origin : "", docType: "COURS" as const };
+    let document: StudioDocument | null = null;
     try {
       const pdf = /\.pdf$/i.test(file);
       const pages = pdf ? await pdfPages(file) : textToSections(readFileSync(file, "utf8"));
-      documents.push(buildImportedDocument(`file:${relative}`, metadata, pages, pdf ? "page" : "section", new Date(statSync(file).mtimeMs)));
+      document = buildImportedDocument(`file:${relative}`, metadata, pages, pdf ? "page" : "section", new Date(info.mtimeMs));
     } catch {
-      // Unreadable or scanned file: skipped (no OCR in the agent server, nothing invented).
+      document = null; // unreadable or scanned file: skipped (no OCR in the agent server, nothing invented)
     }
+    extracted.set(file, { key, document });
+    if (document) documents.push(document);
   }
+  for (const file of extracted.keys()) if (!seen.has(file)) extracted.delete(file);
   return documents;
 }
 

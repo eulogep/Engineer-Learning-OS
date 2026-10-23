@@ -57,8 +57,12 @@ export function titleFromFileName(fileName: string): string {
  * extracts as separate fragments ("modi fi er", "fi chier") and normalises whitespace,
  * keeping paragraph breaks.
  */
+const SPACING_ACCENTS: Readonly<Record<string, string>> = { "\u00B4": "\u0301", "\u0060": "\u0300", "\u02C6": "\u0302", "\u00A8": "\u0308", "\u0301": "\u0301", "\u0300": "\u0300", "\u0302": "\u0302", "\u0308": "\u0308" };
+
 export function cleanExtractedText(text: string): string {
   return text
+    // LaTeX-made PDFs extract accents as separate marks before the letter ("exprim ́ ee" → "exprimée").
+    .replace(/ ?([\u00B4\u0060\u02C6\u00A8\u0300-\u0302\u0308]) ?([aeiouAEIOU])/g, (_match, mark: string, letter: string) => (letter + SPACING_ACCENTS[mark]).normalize("NFC"))
     .normalize("NFKC")
     .replace(/\r\n?/g, "\n")
     // One space on the left means the fragment is inside a word; several mean a word boundary.
