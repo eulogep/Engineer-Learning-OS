@@ -22,6 +22,7 @@ import { analyzeProduction } from "../src/modules/daily-english/local-mission.ts
 import { ROLEPLAY_SCENARIOS, evaluateTurn } from "../src/modules/daily-english/roleplay.ts";
 import { VOCABULARY, VOCABULARY_PACKS } from "../src/modules/daily-english/vocabulary.ts";
 import { replaySchedulers, type ReviewEvent } from "../src/modules/scientific-pedagogy/replay.ts";
+import { parseLearnerSnapshot, type LearnerSnapshot } from "../src/modules/learner-snapshot/core.ts";
 
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -97,6 +98,20 @@ const cite = (documents: readonly StudioDocument[], citation: { documentId: stri
   const document = documents.find((item) => item.id === citation.documentId);
   return { source: document?.title ?? citation.documentId, [document?.unit === "section" ? "section" : "page"]: citation.pageNumber, quote: citation.quote };
 };
+
+const STALE_MS = 24 * 3_600_000;
+
+/** Reads the learner snapshot written by the app (ELOS_STATE_FILE); read-only, strictly validated. */
+export function readSnapshot(env: NodeJS.ProcessEnv): { snapshot: LearnerSnapshot; stale: boolean } | { error: string } {
+  const file = env.ELOS_STATE_FILE?.trim();
+  if (!file) return { error: "ELOS_STATE_FILE is not set: in the ELOS app, open Données → Agent local (Hermes) and choose the shared folder, then point ELOS_STATE_FILE to elos-state.json." };
+  try {
+    const snapshot = parseLearnerSnapshot(readFileSync(path.resolve(file), "utf8"));
+    return { snapshot, stale: Date.now() - Date.parse(snapshot.generatedAt) > STALE_MS };
+  } catch {
+    return { error: "The learner snapshot is missing or invalid. Open the ELOS app once so it can write elos-state.json." };
+  }
+}
 
 export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
   const root = sourcesRoot(env);
@@ -184,6 +199,58 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
       const events: ReviewEvent[] = lines.map((line) => { const c = line.split("\t"); return { itemId: c[card], at: Number(c[at]), success: Number(c[rating]) > 1 }; });
       return { file, ...replaySchedulers(events) };
     }));
+  });
+
+  const freshness = (stale: boolean, snapshot: LearnerSnapshot) => (stale ? `Snapshot from ${snapshot.generatedAt} (older than 24 h): ask the learner to open ELOS to refresh it.` : null);
+
+  server.registerTool("elos_today", {
+    title: "What to study today",
+    description: "Read-only view of the learner's day from the ELOS snapshot: today's Daily English words and status, words and course cards due, top difficulties and the closest exam. Suggests an order; never grants mastery.",
+    inputSchema: {},
+  }, async () => {
+    const read = readSnapshot(env);
+    if ("error" in read) return json(read);
+    const { snapshot, stale } = read;
+    const nextExam = snapshot.exams[0] ?? null;
+    const plan = [
+      snapshot.dailyEnglish.todayMission && !snapshot.dailyEnglish.todayMission.completed ? `Daily English mission (${snapshot.dailyEnglish.todayMission.words.length} words)` : null,
+      snapshot.dailyEnglish.dueWords.length ? `Review ${snapshot.dailyEnglish.dueWords.length} English word(s) due` : null,
+      snapshot.studio.dueToday.length ? `Review ${snapshot.studio.dueToday.length} course card(s) in the Studio` : null,
+      snapshot.studio.difficulties.length ? `Retrieval practice on difficulties: ${snapshot.studio.difficulties.slice(0, 3).map((item) => item.term).join(", ")}` : null,
+      nextExam && nextExam.daysLeft <= 14 ? `Mock exam for ${nextExam.course} (in ${nextExam.daysLeft} days)` : null,
+    ].filter(Boolean);
+    return json({ today: snapshot.today, warning: freshness(stale, snapshot), suggestedOrder: plan, dailyEnglish: snapshot.dailyEnglish.todayMission,
+      dueWords: snapshot.dailyEnglish.dueWords, dueCards: snapshot.studio.dueToday, difficulties: snapshot.studio.difficulties, nextExam });
+  });
+
+  server.registerTool("elos_progress", {
+    title: "Learning progress overview",
+    description: "Read-only progress from the ELOS snapshot: Daily English streak and words seen/mastered, Studio workload for the next 7 days, difficulties, scheduler comparison (FSRS vs Leitner) on the learner's own history when enough data exists.",
+    inputSchema: {},
+  }, async () => {
+    const read = readSnapshot(env);
+    if ("error" in read) return json(read);
+    const { snapshot, stale } = read;
+    return json({ generatedAt: snapshot.generatedAt, warning: freshness(stale, snapshot), dailyEnglish: { streak: snapshot.dailyEnglish.streak, wordsSeen: snapshot.dailyEnglish.wordsSeen, wordsMastered: snapshot.dailyEnglish.wordsMastered, totalWords: snapshot.dailyEnglish.totalWords },
+      studio: { scheduler: snapshot.studio.scheduler, next7Days: snapshot.studio.next7Days, difficulties: snapshot.studio.difficulties, schedulerReplay: snapshot.studio.schedulerReplay } });
+  });
+
+  server.registerTool("elos_exam_plan", {
+    title: "Exam countdown and revision plan",
+    description: "Upcoming exams from the ELOS snapshot with days left and a spaced revision schedule (review sessions at J-14, J-7, J-3, J-1 when still ahead). Read-only.",
+    inputSchema: {},
+  }, async () => {
+    const read = readSnapshot(env);
+    if ("error" in read) return json(read);
+    const { snapshot, stale } = read;
+    const offsets = [14, 7, 3, 1];
+    return json({ warning: freshness(stale, snapshot), exams: snapshot.exams.map((exam) => ({
+      ...exam,
+      sessions: offsets.filter((offset) => exam.daysLeft >= offset).map((offset) => {
+        const day = new Date(Date.parse(`${exam.date}T00:00:00Z`) - offset * 86_400_000).toISOString().slice(0, 10);
+        return { day, label: `J-${offset}`, activity: offset === 1 ? "light review + flashcards" : offset === 3 ? "timed mock exam" : "Studio retrieval practice on the course" };
+      }),
+    })) });
   });
 
   return server;

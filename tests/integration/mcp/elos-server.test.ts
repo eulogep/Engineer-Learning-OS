@@ -32,7 +32,7 @@ after(() => withSources.c.close());
 
 test("server lists the ELOS tools", async () => {
   const { tools } = await withSources.c.listTools();
-  assert.deepEqual(tools.map((tool) => tool.name).sort(), ["elos_ask_sources", "elos_compare_schedulers", "elos_correct_english", "elos_roleplay", "elos_study_pack", "elos_vocabulary"]);
+  assert.deepEqual(tools.map((tool) => tool.name).sort(), ["elos_ask_sources", "elos_compare_schedulers", "elos_correct_english", "elos_exam_plan", "elos_progress", "elos_roleplay", "elos_study_pack", "elos_today", "elos_vocabulary"]);
   assert.match(tools.find((tool) => tool.name === "elos_ask_sources")!.description!, /model provider/);
 });
 
@@ -84,4 +84,45 @@ test("without ELOS_SOURCES_DIR the server only uses synthetic documents", async 
   } finally {
     await demo.c.close();
   }
+});
+
+function snapshotFile(generatedAt: string): string {
+  const file = path.join(sources, `state-${generatedAt.slice(0, 10)}.json`);
+  writeFileSync(file, JSON.stringify({
+    format: "engineer-learning-os/learner-snapshot", version: 1, generatedAt, today: generatedAt.slice(0, 10),
+    dailyEnglish: { streak: 3, wordsSeen: 20, wordsMastered: 2, totalWords: 150, todayMission: { words: ["latency", "threat"], completed: false },
+      dueWords: [{ word: "embrace", translation: "accepter / adopter", due: generatedAt.slice(0, 10) }] },
+    studio: { scheduler: "CURRENT_V1", dueToday: [{ term: "TCP", source: "Modèle OSI" }], next7Days: [{ day: "2026-10-24", cards: 4 }],
+      difficulties: [{ term: "clé étrangère", errors: 2, attempts: 3 }], schedulerReplay: { predictions: 0, enough: false, logLoss: {} } },
+    exams: [{ course: "Base de données SQL", date: "2026-11-02", priority: "P1", daysLeft: 10 }],
+    privacy: { excludes: [] },
+  }));
+  return file;
+}
+
+test("agent tools read the learner snapshot (today, progress, exam plan)", async () => {
+  const fresh = client({ ELOS_STATE_FILE: snapshotFile(new Date().toISOString()) });
+  await fresh.connect();
+  try {
+    const today = text(await fresh.c.callTool({ name: "elos_today", arguments: {} }));
+    assert.equal(today.warning, null);
+    assert.ok(today.suggestedOrder[0].startsWith("Daily English mission"));
+    assert.ok(today.suggestedOrder.some((step: string) => step.includes("Mock exam for Base de données SQL")));
+    const progress = text(await fresh.c.callTool({ name: "elos_progress", arguments: {} }));
+    assert.equal(progress.dailyEnglish.streak, 3);
+    const plan = text(await fresh.c.callTool({ name: "elos_exam_plan", arguments: {} }));
+    assert.deepEqual(plan.exams[0].sessions.map((session: { label: string }) => session.label), ["J-7", "J-3", "J-1"]);
+  } finally {
+    await fresh.c.close();
+  }
+});
+
+test("stale or missing snapshots are reported, never invented", async () => {
+  const stale = client({ ELOS_STATE_FILE: snapshotFile("2026-01-01T08:00:00.000Z") });
+  await stale.connect();
+  try {
+    assert.match(text(await stale.c.callTool({ name: "elos_today", arguments: {} })).warning, /older than 24 h/);
+  } finally { await stale.c.close(); }
+  const missing = await withSources.c.callTool({ name: "elos_today", arguments: {} });
+  assert.match(text(missing).error, /ELOS_STATE_FILE is not set/);
 });
