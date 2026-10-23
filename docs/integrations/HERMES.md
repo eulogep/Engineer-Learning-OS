@@ -14,6 +14,8 @@ Aucun accès réseau ; les modules utilisés sont ceux de l’application (Studi
 | `elos_today` | Quoi faire aujourd’hui : mission Daily English, mots et cartes dus, difficultés, examen proche |
 | `elos_progress` | Série de jours, mots vus / maîtrisés, charge des 7 prochains jours, comparaison FSRS sur ton historique |
 | `elos_exam_plan` | Compte à rebours des examens et séances de révision espacées (J-14, J-7, J-3, J-1) |
+| `elos_course_map` | Programme (matières, chapitres) d’une base pédagogique : objectifs, prérequis, exemple, analogie, erreurs fréquentes, contrôle qualité |
+| `elos_course_exercise` | Exercice de la base sans corrigé ; le corrigé n’est rendu qu’après la réponse de l’apprenant. Les QCM qui échouent au contrôle qualité ne sont jamais servis |
 
 ## Installation
 
@@ -21,10 +23,23 @@ Aucun accès réseau ; les modules utilisés sont ceux de l’application (Studi
 REPO=~/Desktop/Developer/daily-english-mission
 hermes mcp add elos --command "$(command -v node)" --args \
   --experimental-strip-types --no-warnings --import "$REPO/tests/register-loader.mjs" "$REPO/mcp/elos-server.ts"
-hermes mcp test elos      # connexion + 6 outils
+hermes mcp test elos      # connexion + 11 outils
 ```
 
 Dans une session Hermes déjà ouverte : `/reload-mcp`.
+
+## Base pédagogique (programme)
+
+`ELOS_BASE_DIR` désigne un dossier contenant une base extraite par sous-dossier
+(`courses.json`, `exercises.json`, `flashcards.json`, schéma 1.0). Elle est traitée comme matériel dérivé :
+synthèse générée, jamais source officielle ni preuve de maîtrise. À l’import, un contrôle qualité signale
+et écarte les contenus inutilisables pour s’entraîner : QCM dont la bonne réponse est toujours la plus longue,
+mauvaises réponses génériques réutilisées, cartes au verso identique, définitions recopiées, exercices sans source.
+La séparation des corrigés est appliquée par les outils, pas par le système de fichiers : un agent qui dispose
+d’outils de lecture de fichiers pourrait lire `exercises.json` directement.
+
+Le Studio propose le même import dans **Base pédagogique (programme)** ; seuls la carte du programme et le
+rapport qualité y sont conservés, sur l’appareil.
 
 ## Ta progression (lecture seule)
 

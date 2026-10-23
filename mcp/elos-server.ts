@@ -19,6 +19,7 @@ import { answerFromSources, deriveFlashcards, deriveQuiz, revisionSheet, socrati
 import { SYNTHETIC_DOCUMENTS } from "../src/modules/learning-studio/fixtures.ts";
 import { buildImportedDocument, pagesNeedingOcr, textToSections, type RawPage } from "../src/modules/learning-studio/import.ts";
 import { buildAudioOverview } from "../src/modules/learning-studio/overview.ts";
+import { auditPedagogicalBase, parsePedagogicalBase, practiceExercises, type PedagogicalBase, type QualityReport } from "../src/modules/learning-studio/pedagogical-base.ts";
 import { derivePrerequisites, remediationPath } from "../src/modules/learning-studio/prerequisites.ts";
 import type { StudioDocument } from "../src/modules/learning-studio/types.ts";
 import { analyzeProduction } from "../src/modules/daily-english/local-mission.ts";
@@ -195,6 +196,25 @@ const cite = (documents: readonly StudioDocument[], citation: { documentId: stri
   return { source: document?.title ?? citation.documentId, [document?.unit === "section" ? "section" : "page"]: citation.pageNumber, quote: citation.quote, ...(ocr ? { ocr: "text recognised from a scan: verify against the page" } : {}) };
 };
 
+/**
+ * Pedagogical bases (ELOS_BASE_DIR): one folder per extracted export holding courses.json,
+ * exercises.json and flashcards.json. Generated material: audited, never mastery.
+ */
+export function loadBases(env: NodeJS.ProcessEnv = process.env): { name: string; base: PedagogicalBase; report: QualityReport }[] {
+  const dir = env.ELOS_BASE_DIR?.trim();
+  if (!dir) return [];
+  const root = path.resolve(dir);
+  return readdirSync(root).sort().flatMap((name) => {
+    const folder = path.join(root, name);
+    if (name.startsWith(".") || !statSync(folder).isDirectory() || !existsSync(path.join(folder, "courses.json"))) return [];
+    const read = (file: string) => (existsSync(path.join(folder, file)) ? JSON.parse(readFileSync(path.join(folder, file), "utf8")) as unknown : undefined);
+    try {
+      const base = parsePedagogicalBase({ courses: read("courses.json"), exercises: read("exercises.json"), flashcards: read("flashcards.json") });
+      return [{ name, base, report: auditPedagogicalBase(base) }];
+    } catch { return []; }
+  });
+}
+
 const STALE_MS = 24 * 3_600_000;
 
 /** Reads the learner snapshot written by the app (ELOS_STATE_FILE); read-only, strictly validated. */
@@ -347,6 +367,55 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
         return { day, label: `J-${offset}`, activity: offset === 1 ? "light review + flashcards" : offset === 3 ? "timed mock exam" : "Studio retrieval practice on the course" };
       }),
     })) });
+  });
+
+  const baseNote = "Generated course synthesis (DERIVED_MATERIAL), not the official course: check facts against elos_ask_sources. Never counts as mastery.";
+
+  server.registerTool("elos_course_map", {
+    title: "Course map of the learner's programme",
+    description: `Subjects and chapters of the learner's programme from the pedagogical base (ELOS_BASE_DIR). Without chapter_id: chapters list and quality audit. With chapter_id: objectives, prerequisites, notions, worked example, analogy and frequent mistakes, to structure an explanation. ${baseNote}`,
+    inputSchema: { chapter_id: z.string().optional() },
+  }, async ({ chapter_id }) => {
+    const bases = loadBases(env);
+    if (bases.length === 0) return json({ error: "No pedagogical base: set ELOS_BASE_DIR to a folder containing extracted exports (courses.json, exercises.json, flashcards.json)." });
+    if (!chapter_id) return json({ note: baseNote, bases: bases.map(({ name, base, report }) => ({ name, quality: report.findings.map(({ severity, code, count, total, message }) => ({ severity, code, count, total, message })), usable: report.usable,
+      chapters: base.chapters.map((chapter) => ({ id: chapter.id, subject: chapter.subject, title: chapter.title, practiceExercises: practiceExercises(base, report, chapter.id).length })) })) });
+    for (const { base, report } of bases) {
+      const chapter = base.chapters.find((item) => item.id === chapter_id);
+      if (chapter) {
+        const { exerciseIds: _exercises, flashcardIds: _cards, concepts, ...rest } = chapter;
+        const duplicated = new Set(concepts.map((concept) => concept.definition)).size === 1 && concepts.length > 1;
+        return json({ note: baseNote, ...rest, notions: concepts.map((concept) => concept.label), ...(duplicated ? {} : { definitions: concepts }), practiceExercises: practiceExercises(base, report, chapter.id).length });
+      }
+    }
+    return json({ error: "Unknown chapter_id: call elos_course_map without arguments to list chapters." });
+  });
+
+  server.registerTool("elos_course_exercise", {
+    title: "Practice exercise with answer revealed after the attempt",
+    description: `Practice from the pedagogical base. With chapter_id: one exercise (statement only, no solution); multiple-choice questions that failed the quality audit are never served. With exercise_id and the learner's own answer: the reference solution and common errors, for the learner to compare (no score is recorded). Never reveal a solution before the learner has answered. ${baseNote}`,
+    inputSchema: { chapter_id: z.string().optional(), exercise_id: z.string().optional(), answer: z.string().min(1).max(5000).optional() },
+  }, async ({ chapter_id, exercise_id, answer }) => {
+    const bases = loadBases(env);
+    if (exercise_id) {
+      for (const { base, report } of bases) {
+        const exercise = base.exercises.find((item) => item.id === exercise_id);
+        if (!exercise) continue;
+        if (!practiceExercises(base, report, exercise.chapterId).some((item) => item.id === exercise.id)) return json({ error: "This exercise failed the quality audit and is not used for practice." });
+        if (!answer) return json({ error: "Ask the learner to answer first; the solution is revealed only after an attempt." });
+        const key = base.answerKey.get(exercise.id);
+        return json({ note: baseNote, exercise: exercise.prompt, learnerAnswer: answer, referenceSolution: key?.solution, ...(key?.correctOption != null ? { correctOption: exercise.options[key.correctOption] } : {}), commonErrors: key?.commonErrors ?? [], verified: false });
+      }
+      return json({ error: "Unknown exercise_id." });
+    }
+    if (!chapter_id) return json({ error: "Give a chapter_id (see elos_course_map)." });
+    for (const { base, report } of bases) {
+      const pool = practiceExercises(base, report, chapter_id);
+      if (pool.length === 0) continue;
+      const exercise = pool[Math.floor(Math.random() * pool.length)];
+      return json({ note: baseNote, exercise_id: exercise.id, type: exercise.type, difficulty: exercise.difficulty, prompt: exercise.prompt, ...(exercise.options.length ? { options: exercise.options } : {}) });
+    }
+    return json({ error: "No practice exercise passes the quality audit for this chapter." });
   });
 
   return server;
