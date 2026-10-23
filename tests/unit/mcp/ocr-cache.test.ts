@@ -25,7 +25,7 @@ test("cached OCR text fills scanned pages, is flagged, and lives outside the sha
   const file = path.join(root, "Reseaux", "scan.pdf");
   const bytes = blankPdf();
   writeFileSync(file, bytes);
-  const env = { ELOS_OCR: "off" } as NodeJS.ProcessEnv; // never call Vision in tests
+  const env: NodeJS.ProcessEnv = { NODE_ENV: "test", ELOS_OCR: "off" }; // never call Vision in tests
 
   assert.equal((await loadSources(root, env)).length, 0, "a scan without OCR yields nothing (nothing invented)");
 
