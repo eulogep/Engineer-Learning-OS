@@ -107,11 +107,45 @@ function isAnswerable(hit: PassageHit | undefined, query: string): hit is Passag
   return !!hit && queryCoverage(hit, query) >= MIN_QUERY_COVERAGE;
 }
 
+// Real course material is mostly slides: short titles, repeated pages and quiz questions
+// match a question's words without answering it. Answers prefer explanatory passages.
+const DEFINITION_CUE = /\b(?:est|sont|désigne|désignent|sert à|servent à|permet|permettent|référence|correspond|consiste|garantit|assure|identifie)\b|\s:\s/i;
+
+function isQuestionLike(text: string): boolean {
+  return /\?\s*$/.test(text.trim()) || /\bquestion\s*\d*\s*:/i.test(text) || /^\s*[-•]?\s*[a-d]\)\s/i.test(text);
+}
+
+function answerQuality(text: string): number {
+  let quality = 1;
+  if (text.split(/\s+/).length < 8) quality *= 0.35;
+  if (isQuestionLike(text)) quality *= 0.25;
+  if (DEFINITION_CUE.test(text)) quality *= 1.4;
+  // Oral transcripts (timestamps, spoken markers) rank after written material, without being excluded.
+  const spoken = (text.match(/\b(?:je|moi|on va|alors|euh|voilà|vous voyez|d'accord)\b/gi) ?? []).length;
+  if (/\[\d{1,2}:\d{2}/.test(text) || spoken >= 2) quality *= 0.4;
+  return quality;
+}
+
+/** Passages ranked to answer a question: BM25, then duplicates removed and answer quality applied. */
+export function rankAnswerPassages(documents: readonly StudioDocument[], question: string, limit = 4): PassageHit[] {
+  const seen = new Set<string>();
+  return searchPassages(documents, question, 25)
+    .filter((hit) => {
+      const key = normalizeText(hit.passage.text).replace(/[^a-z0-9]+/g, "");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((hit) => ({ ...hit, score: hit.score * answerQuality(hit.passage.text) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
 function bestSentences(hit: PassageHit, query: string, max = 2): string[] {
   const terms = new Set(tokenize(query));
   return splitSentences(hit.passage.text)
     .map((sentence, index) => ({ sentence, index, overlap: tokenize(sentence).filter((token) => terms.has(token)).length }))
-    .filter((item) => item.overlap > 0)
+    .filter((item) => item.overlap > 0 && !isQuestionLike(item.sentence) && item.sentence.split(/\s+/).length >= 4)
     .sort((a, b) => b.overlap - a.overlap || a.index - b.index)
     .slice(0, max)
     .sort((a, b) => a.index - b.index)
@@ -125,12 +159,19 @@ export type GroundedAnswer = AskCourseAnswer & Readonly<{ studioCitations: reado
  * relevant is found it says so instead of inventing an answer.
  */
 export function answerFromSources(documents: readonly StudioDocument[], question: string): GroundedAnswer {
-  const hits = searchPassages(documents, question, 4);
+  const hits = rankAnswerPassages(documents, question, 4);
   const top = hits[0]?.score ?? 0;
   const relevant = isAnswerable(hits[0], question)
     ? hits.filter((hit) => hit.score >= top * 0.6 && queryCoverage(hit, question) >= MIN_QUERY_COVERAGE / 2).slice(0, 2)
     : [];
-  const quoted = relevant.flatMap((hit) => bestSentences(hit, question).map((sentence) => ({ hit, sentence })));
+  const said = new Set<string>();
+  const quoted = relevant.flatMap((hit) => bestSentences(hit, question).map((sentence) => ({ hit, sentence })))
+    .filter(({ sentence }) => {
+      const key = normalizeText(sentence).replace(/[^a-z0-9]+/g, "");
+      if (said.has(key)) return false;
+      said.add(key);
+      return true;
+    });
   if (quoted.length === 0) {
     return { answer: "Je ne trouve pas cette information dans les sources sélectionnées.", citations: [], studioCitations: [],
       uncertainty: "Aucun passage suffisamment pertinent : reformulez ou sélectionnez d’autres documents.", claims: [] };
@@ -147,7 +188,7 @@ export function answerFromSources(documents: readonly StudioDocument[], question
 
 /** Socratic mode: a guiding question first, then graduated hints, the answer last. */
 export function socraticPrompt(documents: readonly StudioDocument[], question: string): SocraticPrompt | null {
-  const hit = searchPassages(documents, question, 1)[0];
+  const hit = rankAnswerPassages(documents, question, 1)[0];
   if (!isAnswerable(hit, question)) return null;
   const sentence = bestSentences(hit, question, 1)[0] ?? splitSentences(hit.passage.text)[0];
   const inPassage = deriveFlashcards([hit.document]).filter((item) => item.citations[0].passageId === hit.passage.id && item.citations[0].pageNumber === hit.page.pageNumber);

@@ -96,3 +96,9 @@ test("mock exam grading reports score, calibration and overconfidence, never mas
   assert.equal(result.attempt.mode, "MOCK_EXAM");
   assert.equal(gradeMockExam(exam, {}, {}, NOW, new Date(NOW.getTime() + 10 * 60_000)).timedOut, true);
 });
+
+test("LaTeX spacing accents are recomposed", () => {
+  assert.equal(cleanExtractedText("La condition de jointure est exprim ́ ee dans la clause WHERE."), "La condition de jointure est exprimée dans la clause WHERE.");
+  assert.equal(cleanExtractedText("donn ́ ees, syst ` eme, contr ˆ ole"), "données, système, contrôle");
+  assert.equal(cleanExtractedText("café déjà vu"), "café déjà vu");
+});

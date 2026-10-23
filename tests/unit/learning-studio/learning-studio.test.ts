@@ -158,3 +158,20 @@ test("studio state survives reloads, ignores canonical-looking entries and corru
 test("tokenizer ignores accents, case and French stop words", () => {
   assert.deepEqual(tokenize("À quoi sert le Masque de sous-réseau ?"), ["masque", "sous", "reseau"]);
 });
+
+test("answers on slide-like sources prefer explanations over titles, quiz questions, transcripts and duplicates", async () => {
+  const { buildImportedDocument } = await import("../../../src/modules/learning-studio/import.ts");
+  const { answerFromSources: answer, rankAnswerPassages } = await import("../../../src/modules/learning-studio/core.ts");
+  const meta = { title: "Slides", subjectLabel: "Réseaux", chapter: "", docType: "COURS" as const };
+  const slides = buildImportedDocument("slides", meta, [
+    { pageNumber: 1, text: "Protocole ARP : même LAN" },
+    { pageNumber: 2, text: "Question 5 : Quelle méthode est utilisée par le protocole ARP ?" },
+    { pageNumber: 3, text: "[12:04.1 - 12:09.0] Alors moi je vous dis, le protocole ARP on va le voir." },
+    { pageNumber: 4, text: "Le protocole ARP permet de trouver l'adresse MAC qui correspond à une adresse IP sur le réseau local." },
+    { pageNumber: 5, text: "Le protocole ARP permet de trouver l'adresse MAC qui correspond à une adresse IP sur le réseau local." },
+  ], "page", new Date(2026, 9, 1));
+  assert.equal(rankAnswerPassages([slides], "Qu'est-ce que le protocole ARP ?", 1)[0].page.pageNumber, 4);
+  const result = answer([slides], "Qu'est-ce que le protocole ARP ?");
+  assert.equal(result.answer, "Le protocole ARP permet de trouver l'adresse MAC qui correspond à une adresse IP sur le réseau local.");
+  assert.equal(result.citations.length, 1);
+});
