@@ -221,8 +221,10 @@ Limites : utilisateurs d’Anki et non d’ELOS (intervalles choisis par l’alg
 « intervalle visant 90 % » faute de probabilité native ; poids FSRS non personnalisés ; 6 utilisateurs ; une meilleure
 prédiction de la mémoire ne prouve pas un meilleur apprentissage.
 
-Recommandation : introduire FSRS-4.5 comme planificateur **expérimental** (désactivé par défaut), comparé dans l’app
-sur l’historique des apprenants ELOS (onglet Plan) ; décision de remplacement de `CURRENT_V1` réservée à l’humain.
+Recommandation appliquée : FSRS-4.5 est disponible comme planificateur **expérimental** des flashcards du Studio
+(onglet Plan, désactivé par défaut ; mémoire reconstruite depuis le journal de révisions, retour à Leitner possible à
+tout moment). Remplacer `CURRENT_V1` par défaut reste une décision humaine, à prendre après comparaison sur
+l’historique des apprenants ELOS.
 
 ## 11. Protocole d’évaluation pédagogique avec des apprenants (prêt à lancer)
 

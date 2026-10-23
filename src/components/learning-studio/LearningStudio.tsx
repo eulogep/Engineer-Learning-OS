@@ -12,7 +12,7 @@ import { dayKey } from "@/modules/daily-english/local-mission";
 import type { ReviewOutcome } from "@/modules/daily-english/spaced-review";
 import {
   answerFromSources, citationLabel, deriveFlashcards, deriveQuiz, difficulties, feynmanFeedback, gradeQuiz, mindMap,
-  readStudioState, reviewCard, revisionPlan, revisionSheet, searchPassages, socraticPrompt, studioReviewEvents, verifyCitation, writeStudioState,
+  rateCard, readStudioState, revisionPlan, revisionSheet, searchPassages, socraticPrompt, studioReviewEvents, verifyCitation, writeStudioState,
   type GroundedAnswer, type KeyValueStorage, type StudioState,
 } from "@/modules/learning-studio/core";
 import { SYNTHETIC_DOCUMENTS } from "@/modules/learning-studio/fixtures";
@@ -150,9 +150,7 @@ export function LearningStudio() {
 
   function rate(outcome: ReviewOutcome) {
     if (!currentCard) return;
-    persist({ ...state,
-      reviews: { ...state.reviews, [currentCard.id]: reviewCard(state.reviews[currentCard.id], outcome, today) },
-      reviewLog: [...(state.reviewLog ?? []), { cardId: currentCard.id, at: new Date().toISOString(), outcome }] });
+    persist(rateCard(state, currentCard.id, outcome, new Date(), today));
     setFlipped(false); setCardIndex((index) => index + 1);
   }
 
@@ -484,6 +482,15 @@ export function LearningStudio() {
                   </div>
                   <div className="rounded-lg border p-2 text-sm" aria-label="Comparaison des planificateurs">
                     <p className="font-medium">Planificateurs sur ton historique</p>
+                    <fieldset className="mt-1 space-y-1 text-xs">
+                      <legend className="sr-only">Planificateur des flashcards</legend>
+                      {([["CURRENT_V1", "Leitner (actuel)"], ["FSRS_4_5", "FSRS-4.5 (expérimental)"]] as const).map(([value, label]) => (
+                        <label key={value} className="mr-3 inline-flex items-center gap-1">
+                          <input type="radio" name="studio-scheduler" checked={(state.scheduler ?? "CURRENT_V1") === value} onChange={() => persist({ ...state, scheduler: value })} />{label}
+                        </label>
+                      ))}
+                      <p className="text-[11px] text-slate-500">S’applique aux prochaines notes de flashcards. FSRS a mieux prédit le rappel sur 6 historiques Anki publics ; à confirmer sur le tien.</p>
+                    </fieldset>
                     {!replay.enough ? (
                       <p className="mt-1 text-xs text-slate-500">Pas encore assez d’historique : {replay.predictions}/{MIN_PREDICTIONS} révisions espacées d’au moins 12 h. Continue à réviser, la comparaison s’affichera ici.</p>
                     ) : (

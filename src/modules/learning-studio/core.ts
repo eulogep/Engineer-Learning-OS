@@ -1,6 +1,6 @@
 import type { AskCourseAnswer } from "../academic-workspace/types";
 import { addDays, applyReview, type DayKey, type ReviewOutcome, type ReviewState } from "../daily-english/spaced-review";
-import type { ReviewEvent } from "../scientific-pedagogy/replay";
+import { fsrsIntervalDays, fsrsMemoryFromHistory, type ReviewEvent } from "../scientific-pedagogy/replay";
 import type {
   FeynmanFeedback, Flashcard, MindMapNode, PassageHit, QuizQuestion, SheetEntry, SocraticPrompt,
   StudioCitation, StudioDocument, StudioQuizAttempt,
@@ -289,6 +289,8 @@ export const STUDIO_STATE_KEY = "engineer-learning-os:learning-studio:v1";
 const MAX_ATTEMPTS = 50;
 
 /** One flashcard rating; kept so schedulers can be compared on the learner's real history. */
+export type StudioScheduler = "CURRENT_V1" | "FSRS_4_5";
+
 export type CardReviewLogEntry = Readonly<{ cardId: string; at: string; outcome: ReviewOutcome }>;
 const MAX_REVIEW_LOG = 2000;
 
@@ -298,6 +300,8 @@ export type StudioState = Readonly<{
   attempts: readonly StudioQuizAttempt[];
   /** Added later: absent in older saved states. */
   reviewLog?: readonly CardReviewLogEntry[];
+  /** Experimental FSRS scheduling; absent = current Leitner ladder. */
+  scheduler?: StudioScheduler;
 }>;
 export type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
 const EMPTY: StudioState = { version: 1, reviews: {}, attempts: [] };
@@ -309,7 +313,8 @@ export function readStudioState(storage: KeyValueStorage | null): StudioState {
     const reviewLog = Array.isArray(parsed.reviewLog)
       ? parsed.reviewLog.filter((entry) => typeof entry?.cardId === "string" && typeof entry.at === "string" && ["SUCCESS", "PARTIAL", "FAIL"].includes(entry.outcome))
       : [];
-    return { version: 1, reviews: parsed.reviews ?? {}, attempts: parsed.attempts.filter((attempt) => attempt?.canonical === false), reviewLog };
+    const scheduler: StudioScheduler = parsed.scheduler === "FSRS_4_5" ? "FSRS_4_5" : "CURRENT_V1";
+    return { version: 1, reviews: parsed.reviews ?? {}, attempts: parsed.attempts.filter((attempt) => attempt?.canonical === false), reviewLog, scheduler };
   } catch {
     return EMPTY;
   }
@@ -333,4 +338,22 @@ export function studioReviewEvents(state: StudioState): ReviewEvent[] {
     ...(state.reviewLog ?? []).map((entry) => ({ itemId: entry.cardId, at: Date.parse(entry.at), success: entry.outcome !== "FAIL" })),
     ...state.attempts.flatMap((attempt) => attempt.items.map((item) => ({ itemId: item.cardId, at: Date.parse(attempt.at), success: item.correct }))),
   ].filter((event) => Number.isFinite(event.at));
+}
+
+/**
+ * Records a flashcard rating and schedules the card with the selected scheduler.
+ * FSRS (experimental) rebuilds the card's memory from its own review log, so no
+ * extra state is stored and switching back to Leitner is always possible.
+ */
+export function rateCard(state: StudioState, cardId: string, outcome: ReviewOutcome, now: Date, today: DayKey): StudioState {
+  const reviewLog = [...(state.reviewLog ?? []), { cardId, at: now.toISOString(), outcome }];
+  let next: ReviewState;
+  if (state.scheduler === "FSRS_4_5") {
+    const history = studioReviewEvents({ ...state, reviewLog }).filter((event) => event.itemId === cardId);
+    const memory = fsrsMemoryFromHistory(history);
+    next = { lastReviewedDay: today, nextReviewDay: addDays(today, memory ? fsrsIntervalDays(memory.stability) : 1) };
+  } else {
+    next = reviewCard(state.reviews[cardId], outcome, today);
+  }
+  return { ...state, reviews: { ...state.reviews, [cardId]: next }, reviewLog };
 }
