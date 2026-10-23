@@ -4,7 +4,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Bot, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SNAPSHOT_FILE, chooseFolder, downloadSnapshot, folderSyncSupported, forgetFolder, savedFolder, syncSnapshot } from "@/modules/learner-snapshot/browser-bridge";
+import { SNAPSHOT_FILE, chooseFolder, downloadSnapshot, folderSyncSupported, forgetFolder, readAgentPractice, savedFolder, syncSnapshot } from "@/modules/learner-snapshot/browser-bridge";
+import type { AgentPractice } from "@/modules/learner-snapshot/agent-practice";
 
 type Folder = Awaited<ReturnType<typeof savedFolder>>;
 const noSubscription = () => () => {};
@@ -13,10 +14,17 @@ const noSubscription = () => () => {};
 export function AgentBridgePanel() {
   const [folder, setFolder] = useState<Folder>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [practice, setPractice] = useState<AgentPractice | null>(null);
   // Server render cannot know the browser API: decide on the client only (no hydration mismatch).
   const supported = useSyncExternalStore(noSubscription, folderSyncSupported, () => false);
 
   useEffect(() => { savedFolder().then(setFolder).catch(() => {}); }, []);
+  useEffect(() => {
+    if (!folder) return;
+    let alive = true;
+    void readAgentPractice(folder).then((value) => { if (alive) setPractice(value); });
+    return () => { alive = false; };
+  }, [folder, status]);
 
   async function run(action: () => Promise<string>) {
     try { setStatus(await action()); } catch (error) { setStatus(error instanceof Error && error.name === "AbortError" ? "Choix annulé." : "Opération impossible."); }
@@ -51,6 +59,20 @@ export function AgentBridgePanel() {
         ) : <p className="text-slate-600">Ce navigateur ne permet pas d’écrire dans un dossier : utilise le téléchargement ci-dessous (ou Chrome).</p>}
         <Button type="button" size="sm" variant="ghost" onClick={() => run(async () => { await downloadSnapshot(); return `${SNAPSHOT_FILE} téléchargé.`; })}>Télécharger {SNAPSHOT_FILE}</Button>
         {status && <p role="status" className="text-xs text-emerald-800">{status}</p>}
+        {practice && practice.chapters.length > 0 && (
+          <section aria-label="Entraînement avec l’agent" className="space-y-2 border-t pt-3">
+            <p className="font-medium">Entraînement avec l’agent</p>
+            <p className="text-xs text-slate-600">QCM tirés de tes cours et faits avec Hermes. C’est de l’entraînement assisté : il ne change aucun niveau de maîtrise.</p>
+            <ul className="space-y-1">
+              {practice.chapters.map((chapter) => (
+                <li key={chapter.chapterId} className="flex flex-wrap justify-between gap-2 text-xs">
+                  <span>{chapter.title}{chapter.subject ? <span className="text-slate-500"> · {chapter.subject}</span> : null}</span>
+                  <span>{chapter.correct}/{chapter.answered} justes{chapter.toRetry > 0 ? ` · ${chapter.toRetry} à revoir` : ""}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </CardContent>
     </Card>
   );

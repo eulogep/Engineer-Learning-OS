@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chapterCards, chapterSourceQuiz, cleanTerm, isCorrectChoice, subjectDocuments } from "../../../src/modules/learning-studio/chapter-practice.ts";
+import { chapterCards, chapterSourceQuiz, cleanTerm, isCorrectChoice, readableSentence, subjectDocuments } from "../../../src/modules/learning-studio/chapter-practice.ts";
 import { buildImportedDocument, textToSections } from "../../../src/modules/learning-studio/import.ts";
 
 // Synthetic course files (no real course content).
@@ -47,4 +47,40 @@ test("cited questions: same-subject wrong answers, no ambiguous option, gradable
     assert.equal(isCorrectChoice(question, question.answer.toLowerCase()), true);
     assert.equal(isCorrectChoice(question, question.choices.find((choice) => choice !== question.answer)!), false);
   }
+});
+
+const projet = doc("file:projet.md", "Communication-gestion-projet", [
+  "Chaque sprint dure au maximum trois semaines et se termine par une démonstration au client.",
+  "Le backlog regroupe les fonctionnalités attendues, classées par valeur pour le client.",
+  "[12:04.5 - 12:09.1] Le sprint commence lundi matin avec toute l’équipe réunie.",
+  "Tableau Sprint Durée Livrable Objectif Valeur Semaine Repère Responsable Statut Sprint.",
+  "Le programme est écrit dans un langage orienté objet très répandu aujourd’hui.",
+].join("\n\n"));
+const agile = { subject: "Gestion de projet", title: "Planification agile et sprints", concepts: [{ label: "sprint" }, { label: "backlog" }],
+  related: ["AMDEC", "McCall", "cahier des charges", "objet"], context: "Le backlog est découpé en sprints courts ; chaque démonstration au client valide la valeur produite." };
+
+test("sentence questions: blanked notion, quoted sentence, same-subject wrong answers", () => {
+  const quiz = chapterSourceQuiz([projet], agile, 10);
+  assert.equal(quiz.length, 2);
+  for (const question of quiz) {
+    assert.match(question.prompt, /_____/);
+    assert.ok(!new RegExp(`\\b${question.answer}\\b`, "i").test(question.prompt), "the answer is hidden");
+    assert.equal(question.choices.length, 4);
+    assert.ok(question.citations[0].quote.includes(question.answer));
+  }
+});
+
+test("timestamps, glued slide headings and duplicate sentences never become questions", () => {
+  assert.equal(readableSentence("[12:04.5 - 12:09.1] Le sprint commence lundi matin avec toute l’équipe."), null);
+  assert.equal(readableSentence("Tableau Sprint Durée Livrable Objectif Valeur Semaine Repère Responsable Statut Sprint."), null);
+  assert.equal(readableSentence("CREATE TABLE Client (id NUMBER, nom VARCHAR2(50));"), null);
+  assert.equal(readableSentence("• Chaque sprint dure trois semaines."), "Chaque sprint dure trois semaines.");
+  const twice = doc("file:double.md", "Communication-gestion-projet", "Chaque sprint dure au maximum trois semaines et se termine par une démonstration au client.");
+  assert.equal(chapterSourceQuiz([projet, twice], agile, 10).filter((question) => question.answer === "sprint").length, 1);
+});
+
+test("a common word is only asked in the chapter's sense", () => {
+  const email = { subject: "Communication", title: "Rédaction des courriels professionnels", concepts: [{ label: "objet" }],
+    related: ["sprint", "backlog", "AMDEC"], context: "L’objet du courriel résume la demande en quelques mots." };
+  assert.deepEqual(chapterSourceQuiz([projet], email, 10), [], "« langage orienté objet » is another sense");
 });

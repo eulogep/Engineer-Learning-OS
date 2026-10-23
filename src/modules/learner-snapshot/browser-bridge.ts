@@ -6,6 +6,7 @@ import { deriveFlashcards, readStudioState } from "../learning-studio/core";
 import { listImportedDocuments } from "../learning-studio/browser-library";
 import { SYNTHETIC_DOCUMENTS } from "../learning-studio/fixtures";
 import { buildLearnerSnapshot, type LearnerSnapshot } from "./core";
+import { AGENT_PRACTICE_FILE, parseAgentPractice, type AgentPractice } from "./agent-practice";
 
 // Writes the learner snapshot to a folder chosen by the learner (File System Access
 // API, Chrome / Edge), so a local agent can read it. Nothing is uploaded anywhere.
@@ -20,7 +21,10 @@ type DirectoryHandle = {
   name: string;
   queryPermission(options: { mode: "readwrite" }): Promise<Permission>;
   requestPermission(options: { mode: "readwrite" }): Promise<Permission>;
-  getFileHandle(name: string, options: { create: boolean }): Promise<{ createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }> }>;
+  getFileHandle(name: string, options: { create: boolean }): Promise<{
+    createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }>;
+    getFile(): Promise<{ text(): Promise<string> }>;
+  }>;
 };
 type PickerWindow = Window & { showDirectoryPicker?: (options: { mode: "readwrite"; id?: string }) => Promise<DirectoryHandle> };
 
@@ -96,6 +100,14 @@ export async function syncSnapshot(handle: DirectoryHandle, options: { force?: b
   await writable.close();
   lastWritten = key;
   return "written";
+}
+
+/** Reads the practice summary the agent wrote in the shared folder; null when absent, unreadable or invalid. */
+export async function readAgentPractice(handle: DirectoryHandle): Promise<AgentPractice | null> {
+  try {
+    if (await handle.queryPermission({ mode: "readwrite" }) !== "granted") return null;
+    return parseAgentPractice(await (await (await handle.getFileHandle(AGENT_PRACTICE_FILE, { create: false })).getFile()).text());
+  } catch { return null; }
 }
 
 export async function downloadSnapshot(): Promise<void> {

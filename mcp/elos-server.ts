@@ -28,6 +28,7 @@ import { ROLEPLAY_SCENARIOS, evaluateTurn } from "../src/modules/daily-english/r
 import { VOCABULARY, VOCABULARY_PACKS } from "../src/modules/daily-english/vocabulary.ts";
 import { replaySchedulers, type ReviewEvent } from "../src/modules/scientific-pedagogy/replay.ts";
 import { parseLearnerSnapshot, type LearnerSnapshot } from "../src/modules/learner-snapshot/core.ts";
+import { AGENT_PRACTICE_FILE, buildAgentPractice } from "../src/modules/learner-snapshot/agent-practice.ts";
 
 const MAX_FILES = 1000;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -243,6 +244,15 @@ function recordPractice(file: string, entry: PracticeEntry): void {
   appendFileSync(file, JSON.stringify(entry) + "\n", { mode: 0o600 });
 }
 
+/** Hands the per-chapter practice summary back to the app, next to the learner snapshot (counts only). */
+export function publishPractice(log: string, chapters: readonly { id: string; title: string; subject: string }[], env: NodeJS.ProcessEnv = process.env): void {
+  const stateFile = env.ELOS_STATE_FILE?.trim();
+  if (!stateFile) return;
+  try {
+    writeFileSync(path.join(path.dirname(path.resolve(stateFile)), AGENT_PRACTICE_FILE), JSON.stringify(buildAgentPractice(readPractice(log), chapters, new Date()), null, 2));
+  } catch { /* the app keeps the previous summary */ }
+}
+
 const STALE_MS = 24 * 3_600_000;
 
 /** Reads the learner snapshot written by the app (ELOS_STATE_FILE); read-only, strictly validated. */
@@ -427,7 +437,10 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
   const findChapter = (chapterId: string) => {
     for (const { base } of loadBases(env)) {
       const chapter = base.chapters.find((item) => item.id === chapterId);
-      if (chapter) return chapter;
+      if (chapter) {
+        const related = base.chapters.filter((item) => item.subject === chapter.subject && item.id !== chapter.id).flatMap((item) => item.concepts.map((concept) => concept.label));
+        return { ...chapter, related, context: [chapter.summary, chapter.example, chapter.mistakes, ...chapter.objectives].join(" ") };
+      }
     }
     return null;
   };
@@ -451,7 +464,11 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
       const question = chapterSourceQuiz(documents, chapter, 50).find((item) => item.cardId === parsed[1]);
       if (!question) return json({ error: "This question is no longer available (the course files changed)." });
       const correct = isCorrectChoice(question, answer);
-      if (root) recordPractice(practiceLogFile(root, env), { at: new Date().toISOString(), chapterId: chapter.id, questionId: exercise_id, correct });
+      if (root) {
+        const log = practiceLogFile(root, env);
+        recordPractice(log, { at: new Date().toISOString(), chapterId: chapter.id, questionId: exercise_id, correct });
+        publishPractice(log, bases.flatMap(({ base }) => base.chapters), env);
+      }
       return json({ correct, rightAnswer: question.answer, learnerAnswer: answer, citation: cite(documents, question.citations[0]), evidence: "DERIVED_PRACTICE (not mastery)" });
     }
     if (exercise_id) {
