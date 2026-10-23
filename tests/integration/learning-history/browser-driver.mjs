@@ -31,7 +31,7 @@ class DevTools {
   send(method, params = {}, sessionId = undefined) {
     const id = ++this.sequence;
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => { this.pending.delete(id); reject(new Error("CDP timeout: " + method)); }, 60000);
+      const timeout = setTimeout(() => { this.pending.delete(id); reject(new Error("CDP timeout: " + method)); }, 180000); // large 10k-event round-trips are slow on small CI runners
       this.pending.set(id, { resolve, reject, timeout });
       this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
     });

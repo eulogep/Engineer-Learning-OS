@@ -33,4 +33,5 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      # Limited parallelism: several test files start headless Chrome or MCP servers.
+      - run: npm run test:ci
