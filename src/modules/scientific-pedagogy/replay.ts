@@ -41,16 +41,16 @@ export const FSRS_4_5_DEFAULT_WEIGHTS = [
 ] as const;
 const DECAY = -0.5;
 const FACTOR = 19 / 81;
-type Grade = 1 | 3; // Again | Good: the log only knows failure / success
+export type Grade = 1 | 3; // Again | Good: the log only knows failure / success
 
 export function fsrsRetrievability(elapsedDays: number, stability: number): number {
   return Math.pow(1 + (FACTOR * Math.max(0, elapsedDays)) / stability, DECAY);
 }
 
-type FsrsMemory = Readonly<{ stability: number; difficulty: number }>;
+export type FsrsMemory = Readonly<{ stability: number; difficulty: number }>;
 const clampDifficulty = (value: number) => Math.min(10, Math.max(1, value));
 
-function fsrsInit(grade: Grade, w = FSRS_4_5_DEFAULT_WEIGHTS): FsrsMemory {
+export function fsrsInit(grade: Grade, w = FSRS_4_5_DEFAULT_WEIGHTS): FsrsMemory {
   return { stability: w[grade - 1], difficulty: clampDifficulty(w[4] - w[5] * (grade - 3)) };
 }
 
@@ -115,4 +115,28 @@ export function replaySchedulers(events: readonly ReviewEvent[]): ReplayReport {
     enough: fsrs.length >= MIN_PREDICTIONS,
     scores: [score("CURRENT_V1", leitner), score("FSRS_4_5", fsrs)],
   };
+}
+
+/**
+ * FSRS memory of one item rebuilt from its own history (same rules as the replay:
+ * same-session repeats ignored). Returns null when the item was never reviewed.
+ */
+export function fsrsMemoryFromHistory(history: readonly Readonly<{ at: number; success: boolean }>[]): FsrsMemory | null {
+  let memory: FsrsMemory | null = null;
+  let last = 0;
+  for (const event of [...history].sort((a, b) => a.at - b.at)) {
+    const grade: Grade = event.success ? 3 : 1;
+    if (memory === null) { memory = fsrsInit(grade); last = event.at; continue; }
+    const elapsed = (event.at - last) / DAY_MS;
+    if (elapsed < 0.5) continue;
+    memory = fsrsUpdate(memory, elapsed, grade);
+    last = event.at;
+  }
+  return memory;
+}
+
+/** Days until predicted recall falls to the target (0.9 by default: the interval equals the stability). */
+export function fsrsIntervalDays(stability: number, targetRetention = 0.9): number {
+  const days = (stability / FACTOR) * (Math.pow(targetRetention, 1 / DECAY) - 1);
+  return Math.min(365, Math.max(1, Math.round(days)));
 }
