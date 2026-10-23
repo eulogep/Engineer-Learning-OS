@@ -15,7 +15,7 @@ Aucun accès réseau ; les modules utilisés sont ceux de l’application (Studi
 | `elos_progress` | Série de jours, mots vus / maîtrisés, charge des 7 prochains jours, comparaison FSRS sur ton historique |
 | `elos_exam_plan` | Compte à rebours des examens et séances de révision espacées (J-14, J-7, J-3, J-1) |
 | `elos_course_map` | Programme (matières, chapitres) d’une base pédagogique : objectifs, prérequis, exemple, analogie, erreurs fréquentes, contrôle qualité |
-| `elos_course_exercise` | Exercice de la base sans corrigé ; le corrigé n’est rendu qu’après la réponse de l’apprenant. Les QCM qui échouent au contrôle qualité ne sont jamais servis |
+| `elos_course_exercise` | Par défaut, QCM construit depuis tes propres cours du chapitre (citation page, mauvaises réponses tirées de la même matière, questions ratées en priorité) ; sinon exercice de la base. Correction seulement après ta réponse ; journal d’entraînement hors du dossier partagé, jamais compté comme maîtrise |
 
 ## Installation
 
@@ -35,8 +35,15 @@ Dans une session Hermes déjà ouverte : `/reload-mcp`.
 synthèse générée, jamais source officielle ni preuve de maîtrise. À l’import, un contrôle qualité signale
 et écarte les contenus inutilisables pour s’entraîner : QCM dont la bonne réponse est toujours la plus longue,
 mauvaises réponses génériques réutilisées, cartes au verso identique, définitions recopiées, exercices sans source.
-La séparation des corrigés est appliquée par les outils, pas par le système de fichiers : un agent qui dispose
-d’outils de lecture de fichiers pourrait lire `exercises.json` directement.
+Les corrigés sortent du dossier partagé avec `npm run mcp:split-base -- <dossier de la base> <dossier privé>` :
+`exercises.json` ne garde que les questions et le serveur lit les corrigés dans `ELOS_ANSWERS_DIR/<base>.json`
+(droits 600). Hermes refuse de lire `config.yaml` avec son outil de fichiers, ce qui cache ce chemin, mais son
+terminal tourne avec ton compte : c’est une protection contre la lecture accidentelle, pas une frontière de sécurité.
+
+Questions citées : pour chaque chapitre, les notions du programme sont cherchées dans les définitions de tes
+cours de la même matière (dossier dont le nom partage un mot avec la matière). Les intitulés parasites
+(puces, débuts de proposition comme « Si… ») sont écartés. Les réponses sont journalisées dans
+`<cache>/practice-log.jsonl` (`DERIVED_PRACTICE`), hors du dossier partagé.
 
 Le Studio propose le même import dans **Base pédagogique (programme)** ; seuls la carte du programme et le
 rapport qualité y sont conservés, sur l’appareil.

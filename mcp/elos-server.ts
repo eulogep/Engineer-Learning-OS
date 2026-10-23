@@ -9,7 +9,7 @@
 // Run: node --experimental-strip-types --import ./tests/register-loader.mjs mcp/elos-server.ts
 import { execFile, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { promisify } from "node:util";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -19,6 +19,7 @@ import { answerFromSources, deriveFlashcards, deriveQuiz, revisionSheet, socrati
 import { SYNTHETIC_DOCUMENTS } from "../src/modules/learning-studio/fixtures.ts";
 import { buildImportedDocument, pagesNeedingOcr, textToSections, type RawPage } from "../src/modules/learning-studio/import.ts";
 import { buildAudioOverview } from "../src/modules/learning-studio/overview.ts";
+import { chapterSourceQuiz, isCorrectChoice } from "../src/modules/learning-studio/chapter-practice.ts";
 import { auditPedagogicalBase, parsePedagogicalBase, practiceExercises, type PedagogicalBase, type QualityReport } from "../src/modules/learning-studio/pedagogical-base.ts";
 import { derivePrerequisites, remediationPath } from "../src/modules/learning-studio/prerequisites.ts";
 import type { StudioDocument } from "../src/modules/learning-studio/types.ts";
@@ -199,20 +200,47 @@ const cite = (documents: readonly StudioDocument[], citation: { documentId: stri
 /**
  * Pedagogical bases (ELOS_BASE_DIR): one folder per extracted export holding courses.json,
  * exercises.json and flashcards.json. Generated material: audited, never mastery.
+ * Answer keys live in ELOS_ANSWERS_DIR/<base>.json (see `npm run mcp:split-base`), outside the
+ * folder the agent browses; a key still inside exercises.json is used but reported.
  */
-export function loadBases(env: NodeJS.ProcessEnv = process.env): { name: string; base: PedagogicalBase; report: QualityReport }[] {
+export function loadBases(env: NodeJS.ProcessEnv = process.env): { name: string; base: PedagogicalBase; report: QualityReport; answersInSharedFolder: boolean }[] {
   const dir = env.ELOS_BASE_DIR?.trim();
   if (!dir) return [];
   const root = path.resolve(dir);
   return readdirSync(root).sort().flatMap((name) => {
     const folder = path.join(root, name);
     if (name.startsWith(".") || !statSync(folder).isDirectory() || !existsSync(path.join(folder, "courses.json"))) return [];
-    const read = (file: string) => (existsSync(path.join(folder, file)) ? JSON.parse(readFileSync(path.join(folder, file), "utf8")) as unknown : undefined);
+    const read = (file: string) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) as unknown : undefined);
+    const answersDir = env.ELOS_ANSWERS_DIR?.trim();
     try {
-      const base = parsePedagogicalBase({ courses: read("courses.json"), exercises: read("exercises.json"), flashcards: read("flashcards.json") });
-      return [{ name, base, report: auditPedagogicalBase(base) }];
+      const exercises = read(path.join(folder, "exercises.json"));
+      const answerKey = answersDir ? read(path.join(path.resolve(answersDir), `${name}.json`)) : undefined;
+      const base = parsePedagogicalBase({ courses: read(path.join(folder, "courses.json")), exercises, flashcards: read(path.join(folder, "flashcards.json")), answerKey });
+      const answersInSharedFolder = Array.isArray((exercises as { answer_key?: unknown } | undefined)?.answer_key);
+      return [{ name, base, report: auditPedagogicalBase(base), answersInSharedFolder }];
     } catch { return []; }
   });
+}
+
+// Practice log of course questions answered through the agent: outside the shared folder,
+// used to ask missed questions again. DERIVED_PRACTICE only: it never grants mastery.
+export type PracticeEntry = Readonly<{ at: string; chapterId: string; questionId: string; correct: boolean }>;
+
+export function practiceLogFile(root: string, env: NodeJS.ProcessEnv = process.env): string {
+  return path.join(cacheDir(root, env), "practice-log.jsonl");
+}
+
+export function readPractice(file: string): PracticeEntry[] {
+  try {
+    return readFileSync(file, "utf8").split("\n").filter(Boolean).flatMap((line) => {
+      try { return [JSON.parse(line) as PracticeEntry]; } catch { return []; }
+    });
+  } catch { return []; }
+}
+
+function recordPractice(file: string, entry: PracticeEntry): void {
+  mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  appendFileSync(file, JSON.stringify(entry) + "\n", { mode: 0o600 });
 }
 
 const STALE_MS = 24 * 3_600_000;
@@ -371,6 +399,11 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
 
   const baseNote = "Generated course synthesis (DERIVED_MATERIAL), not the official course: check facts against elos_ask_sources. Never counts as mastery.";
 
+  const practiceSummary = (chapterId: string) => {
+    const entries = root ? readPractice(practiceLogFile(root, env)).filter((entry) => entry.chapterId === chapterId) : [];
+    return entries.length ? { answered: entries.length, correct: entries.filter((entry) => entry.correct).length, evidence: "DERIVED_PRACTICE" } : null;
+  };
+
   server.registerTool("elos_course_map", {
     title: "Course map of the learner's programme",
     description: `Subjects and chapters of the learner's programme from the pedagogical base (ELOS_BASE_DIR). Without chapter_id: chapters list and quality audit. With chapter_id: objectives, prerequisites, notions, worked example, analogy and frequent mistakes, to structure an explanation. ${baseNote}`,
@@ -378,8 +411,8 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
   }, async ({ chapter_id }) => {
     const bases = loadBases(env);
     if (bases.length === 0) return json({ error: "No pedagogical base: set ELOS_BASE_DIR to a folder containing extracted exports (courses.json, exercises.json, flashcards.json)." });
-    if (!chapter_id) return json({ note: baseNote, bases: bases.map(({ name, base, report }) => ({ name, quality: report.findings.map(({ severity, code, count, total, message }) => ({ severity, code, count, total, message })), usable: report.usable,
-      chapters: base.chapters.map((chapter) => ({ id: chapter.id, subject: chapter.subject, title: chapter.title, practiceExercises: practiceExercises(base, report, chapter.id).length })) })) });
+    if (!chapter_id) return json({ note: baseNote, bases: bases.map(({ name, base, report, answersInSharedFolder }) => ({ name, ...(answersInSharedFolder ? { warning: "Answer key is still inside exercises.json in the shared folder: run npm run mcp:split-base." } : {}), quality: report.findings.map(({ severity, code, count, total, message }) => ({ severity, code, count, total, message })), usable: report.usable,
+      chapters: base.chapters.map((chapter) => ({ id: chapter.id, subject: chapter.subject, title: chapter.title, practiceExercises: practiceExercises(base, report, chapter.id).length, practice: practiceSummary(chapter.id) })) })) });
     for (const { base, report } of bases) {
       const chapter = base.chapters.find((item) => item.id === chapter_id);
       if (chapter) {
@@ -391,12 +424,36 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
     return json({ error: "Unknown chapter_id: call elos_course_map without arguments to list chapters." });
   });
 
+  const findChapter = (chapterId: string) => {
+    for (const { base } of loadBases(env)) {
+      const chapter = base.chapters.find((item) => item.id === chapterId);
+      if (chapter) return chapter;
+    }
+    return null;
+  };
+  const sourceQuestionId = (chapterId: string, cardId: string) => `src:${Buffer.from(JSON.stringify([chapterId, cardId])).toString("base64url")}`;
+  const parseSourceQuestionId = (id: string): [string, string] | null => {
+    try { const value = JSON.parse(Buffer.from(id.slice(4), "base64url").toString("utf8")) as unknown; return Array.isArray(value) && value.length === 2 ? value as [string, string] : null; } catch { return null; }
+  };
+
   server.registerTool("elos_course_exercise", {
     title: "Practice exercise with answer revealed after the attempt",
-    description: `Practice from the pedagogical base. With chapter_id: one exercise (statement only, no solution); multiple-choice questions that failed the quality audit are never served. With exercise_id and the learner's own answer: the reference solution and common errors, for the learner to compare (no score is recorded). Never reveal a solution before the learner has answered. ${baseNote}`,
-    inputSchema: { chapter_id: z.string().optional(), exercise_id: z.string().optional(), answer: z.string().min(1).max(5000).optional() },
-  }, async ({ chapter_id, exercise_id, answer }) => {
+    description: `Practice on a programme chapter. With chapter_id: one exercise, statement only. By default (source "courses") a multiple-choice question built from the learner's own course files, with a page citation, preferring questions missed before; otherwise (or with source "base") an exercise of the pedagogical base. Multiple-choice questions that failed the quality audit are never served. With exercise_id and the learner's answer (a letter A-D or the option text for a multiple-choice question): the correction; course questions are graded and logged as practice (DERIVED_PRACTICE, never mastery). Never reveal a solution before the learner has answered. ${baseNote}`,
+    inputSchema: { chapter_id: z.string().optional(), exercise_id: z.string().optional(), answer: z.string().min(1).max(5000).optional(), source: z.enum(["courses", "base"]).default("courses") },
+  }, async ({ chapter_id, exercise_id, answer, source }) => {
     const bases = loadBases(env);
+    if (exercise_id?.startsWith("src:")) {
+      const parsed = parseSourceQuestionId(exercise_id);
+      const chapter = parsed && findChapter(parsed[0]);
+      if (!parsed || !chapter) return json({ error: "Unknown exercise_id." });
+      if (!answer) return json({ error: "Ask the learner to answer first; the solution is revealed only after an attempt." });
+      const documents = await loadSources(root, env);
+      const question = chapterSourceQuiz(documents, chapter, 50).find((item) => item.cardId === parsed[1]);
+      if (!question) return json({ error: "This question is no longer available (the course files changed)." });
+      const correct = isCorrectChoice(question, answer);
+      if (root) recordPractice(practiceLogFile(root, env), { at: new Date().toISOString(), chapterId: chapter.id, questionId: exercise_id, correct });
+      return json({ correct, rightAnswer: question.answer, learnerAnswer: answer, citation: cite(documents, question.citations[0]), evidence: "DERIVED_PRACTICE (not mastery)" });
+    }
     if (exercise_id) {
       for (const { base, report } of bases) {
         const exercise = base.exercises.find((item) => item.id === exercise_id);
@@ -409,6 +466,19 @@ export function createServer(env: NodeJS.ProcessEnv = process.env): McpServer {
       return json({ error: "Unknown exercise_id." });
     }
     if (!chapter_id) return json({ error: "Give a chapter_id (see elos_course_map)." });
+    const chapter = findChapter(chapter_id);
+    if (chapter && source === "courses") {
+      const questions = chapterSourceQuiz(await loadSources(root, env), chapter, 50);
+      if (questions.length > 0) {
+        const history = root ? readPractice(practiceLogFile(root, env)) : [];
+        const last = new Map(history.map((entry) => [entry.questionId, entry.correct]));
+        const rank = (id: string) => (last.get(id) === false ? 0 : last.has(id) ? 2 : 1);
+        const ranked = questions.map((question) => ({ question, id: sourceQuestionId(chapter.id, question.cardId) })).sort((a, b) => rank(a.id) - rank(b.id));
+        const best = ranked.filter((item) => rank(item.id) === rank(ranked[0].id));
+        const { question, id } = best[Math.floor(Math.random() * best.length)];
+        return json({ exercise_id: id, type: "qcm_from_courses", prompt: question.prompt, options: question.choices.map((choice, index) => `${String.fromCharCode(65 + index)}. ${choice}`), note: "Built from the learner's course files; the page citation is given with the correction." });
+      }
+    }
     for (const { base, report } of bases) {
       const pool = practiceExercises(base, report, chapter_id);
       if (pool.length === 0) continue;

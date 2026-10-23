@@ -69,7 +69,16 @@ const array = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
 const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
 const texts = (value: unknown): string[] => array(value).map(text).filter(Boolean);
 
-export function parsePedagogicalBase(input: Readonly<{ courses: unknown; exercises?: unknown; flashcards?: unknown }>): PedagogicalBase & { leakedAnswers: number } {
+/**
+ * Moves the answer key out of exercises.json so the folder shared with an agent holds questions only;
+ * the key is stored elsewhere and read by the MCP server alone.
+ */
+export function splitAnswerKey(exercises: unknown): { questions: Json; answerKey: unknown[] } {
+  const { answer_key: answerKey, ...questions } = object(exercises);
+  return { questions, answerKey: array(answerKey) };
+}
+
+export function parsePedagogicalBase(input: Readonly<{ courses: unknown; exercises?: unknown; flashcards?: unknown; answerKey?: unknown }>): PedagogicalBase & { leakedAnswers: number } {
   const subjects = array(object(input.courses).subjects);
   if (subjects.length === 0) throw new ImportError("courses.json invalide : aucune matière (subjects) trouvée.");
 
@@ -111,7 +120,7 @@ export function parsePedagogicalBase(input: Readonly<{ courses: unknown; exercis
   });
 
   const answerKey = new Map<string, BaseAnswer>();
-  for (const raw of array(exercisesFile.answer_key).map(object)) {
+  for (const raw of array(input.answerKey ?? exercisesFile.answer_key).map(object)) {
     const id = text(raw.id);
     if (!id) continue;
     const correct = object(raw.answer).correct_option;
