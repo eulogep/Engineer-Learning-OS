@@ -60,6 +60,20 @@ N’y mets pas de documents d’entreprise internes, de données personnelles d�
 
 Le serveur est lancé depuis ce dépôt : garde une branche qui contient `mcp/` (par exemple `main-public`).
 
+## PDF scannés (OCR sur le Mac)
+
+Sur macOS, le serveur lit aussi les PDF scannés grâce à l’OCR intégré (framework Vision, via `mcp/ocr-vision.swift`,
+compilé une fois avec `swiftc`) : aucun téléchargement, aucun envoi. Le texte reconnu est mis en cache dans
+`ELOS_CACHE_DIR` (par défaut `../.elos-cache` à côté du dossier de cours, jamais dans le dossier partagé) ; les
+citations issues d’une page OCR portent la mention « verify against the page ». L’OCR se fait en arrière-plan
+(la première question n’attend pas) ; pour tout préparer d’avance :
+
+```bash
+ELOS_SOURCES_DIR=~/ELOS-Hermes/cours npm run mcp:ocr
+```
+
+`ELOS_OCR=off` désactive l’OCR.
+
 ## Coach du matin (tâche planifiée Hermes, sans modèle)
 
 `scripts/morning-coach.ts` construit chaque matin un message à partir du résumé : série, révisions dues, question de
