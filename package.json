@@ -26,6 +26,7 @@
     "lint": "eslint .",
     "mcp:elos": "node --experimental-strip-types --no-warnings --import ./tests/register-loader.mjs mcp/elos-server.ts",
     "mcp:ocr": "node --experimental-strip-types --no-warnings --import ./tests/register-loader.mjs mcp/prepare-ocr.ts",
+    "mcp:split-base": "node --experimental-strip-types --no-warnings --import ./tests/register-loader.mjs mcp/split-base.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types --import ./tests/register-loader.mjs \"tests/unit/**/*.test.ts\" \"tests/integration/**/*.test.ts\" \"tests/integration/**/*.test.cjs\"",
     "test:ci": "node --test --test-concurrency=2 --experimental-strip-types --import ./tests/register-loader.mjs \"tests/unit/**/*.test.ts\" \"tests/integration/**/*.test.ts\" \"tests/integration/**/*.test.cjs\"",

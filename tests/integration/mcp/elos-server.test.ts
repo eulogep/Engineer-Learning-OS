@@ -32,7 +32,7 @@ after(() => withSources.c.close());
 
 test("server lists the ELOS tools", async () => {
   const { tools } = await withSources.c.listTools();
-  assert.deepEqual(tools.map((tool) => tool.name).sort(), ["elos_ask_sources", "elos_compare_schedulers", "elos_correct_english", "elos_exam_plan", "elos_progress", "elos_roleplay", "elos_study_pack", "elos_today", "elos_vocabulary"]);
+  assert.deepEqual(tools.map((tool) => tool.name).sort(), ["elos_ask_sources", "elos_compare_schedulers", "elos_correct_english", "elos_course_exercise", "elos_course_map", "elos_exam_plan", "elos_progress", "elos_roleplay", "elos_study_pack", "elos_today", "elos_vocabulary"]);
   assert.match(tools.find((tool) => tool.name === "elos_ask_sources")!.description!, /model provider/);
 });
 

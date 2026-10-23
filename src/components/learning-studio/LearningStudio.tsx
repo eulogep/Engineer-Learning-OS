@@ -21,6 +21,7 @@ import { MIN_PREDICTIONS, replaySchedulers } from "@/modules/scientific-pedagogy
 import { deleteImportedDocument, listImportedDocuments } from "@/modules/learning-studio/browser-library";
 import { ImportPanel } from "@/components/learning-studio/ImportPanel";
 import { AcademicCataloguePanel } from "@/components/learning-studio/AcademicCataloguePanel";
+import { PedagogicalBasePanel } from "@/components/learning-studio/PedagogicalBasePanel";
 import { ListenButton } from "@/components/learning-studio/ListenButton";
 import { AudioOverviewPlayer } from "@/components/learning-studio/AudioOverviewPlayer";
 import { buildAudioOverview } from "@/modules/learning-studio/overview";
@@ -217,6 +218,7 @@ export function LearningStudio() {
               <p className="text-xs text-slate-500">{documents.length} source(s) active(s) dans ce périmètre</p>
               <ImportPanel onImported={addImported} />
               <AcademicCataloguePanel documents={imported} onImported={addImported} />
+              <PedagogicalBasePanel />
             </CardContent>
           </Card>
           <Card>
