@@ -7,6 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer, practiceLogFile, readPractice } from "../../../mcp/elos-server.ts";
 import { splitAnswerKey } from "../../../src/modules/learning-studio/pedagogical-base.ts";
+import { parseAgentPractice } from "../../../src/modules/learner-snapshot/agent-practice.ts";
 
 // Synthetic export: one guessable multiple-choice question and one open exercise per chapter.
 const NAMES = ["un", "deux", "trois", "quatre", "cinq"];
@@ -102,7 +103,7 @@ test("course questions come from the learner's files, are graded after the attem
   const bases = path.join(base, "bases", "lp");
   mkdirSync(bases, { recursive: true });
   writeFileSync(path.join(bases, "courses.json"), JSON.stringify({ subjects: [{ subject: { name: "Architecture des réseaux" }, modules: [{ chapters: [{ id: "ch_ip", title: "IPv4", lessons: [{ concepts: [{ label: "IPv4" }, { label: "masque" }] }] }] }] }] }));
-  const env: NodeJS.ProcessEnv = { NODE_ENV: "test", ELOS_SOURCES_DIR: root, ELOS_BASE_DIR: path.dirname(bases), ELOS_OCR: "off" };
+  const env: NodeJS.ProcessEnv = { NODE_ENV: "test", ELOS_SOURCES_DIR: root, ELOS_BASE_DIR: path.dirname(bases), ELOS_STATE_FILE: path.join(base, "elos-state.json"), ELOS_OCR: "off" };
   const call = await connect(env);
 
   const question = await call("elos_course_exercise", { chapter_id: "ch_ip" }) as { exercise_id: string; type: string; options: string[] };
@@ -121,6 +122,8 @@ test("course questions come from the learner's files, are graded after the attem
   assert.ok(!log.startsWith(root + path.sep), "the log lives outside the shared course folder");
   assert.ok(existsSync(log));
   assert.equal(readPractice(log).length, 1);
+  const summary = parseAgentPractice(readFileSync(path.join(base, "elos-practice.json"), "utf8"));
+  assert.deepEqual([summary.chapters[0].chapterId, summary.chapters[0].answered], ["ch_ip", 1]);
   const map = await call("elos_course_map") as { bases: { chapters: { practice: { answered: number } | null }[] }[] };
   assert.equal(map.bases[0].chapters[0].practice?.answered, 1);
 });

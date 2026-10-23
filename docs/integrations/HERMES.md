@@ -42,8 +42,18 @@ terminal tourne avec ton compte : c’est une protection contre la lecture accid
 
 Questions citées : pour chaque chapitre, les notions du programme sont cherchées dans les définitions de tes
 cours de la même matière (dossier dont le nom partage un mot avec la matière). Les intitulés parasites
-(puces, débuts de proposition comme « Si… ») sont écartés. Les réponses sont journalisées dans
+(puces, débuts de proposition comme « Si… ») sont écartés. Quand un chapitre n’a pas de définition
+« X est… » dans les cours (cas fréquent des diapositives), une phrase du cours qui emploie la notion est proposée
+avec la notion masquée ; les mauvaises réponses sont les notions des autres chapitres de la même matière. Les
+phrases retenues sont de vraies phrases (pas d’horodatage de transcription, de ligne de tableau, de code ni de
+titres de diapositives collés), sans doublon, et un mot courant (« objet », « revue ») n’est demandé que si la
+phrase partage un mot-clé avec le chapitre. Les réponses sont journalisées dans
 `<cache>/practice-log.jsonl` (`DERIVED_PRACTICE`), hors du dossier partagé.
+
+Retour vers l’application : après chaque réponse, le serveur écrit `elos-practice.json` à côté de
+`ELOS_STATE_FILE` (format `engineer-learning-os/agent-practice` v1, des comptes par chapitre seulement).
+ELOS le lit dans le dossier déjà partagé et l’affiche dans **Données → Agent local (Hermes)** comme
+entraînement assisté ; il ne modifie aucun niveau de maîtrise et un fichier invalide est ignoré.
 
 Le Studio propose le même import dans **Base pédagogique (programme)** ; seuls la carte du programme et le
 rapport qualité y sont conservés, sur l’appareil.

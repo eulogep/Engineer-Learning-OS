@@ -1,4 +1,4 @@
-import { deriveFlashcards, normalizeText, tokenize } from "./core";
+import { allPassages, citationFor, deriveFlashcards, normalizeText, splitSentences, tokenize } from "./core";
 import { conceptKey, remediationPath } from "./prerequisites";
 import type { Flashcard, QuizQuestion, StudioDocument } from "./types";
 
@@ -13,7 +13,15 @@ import type { Flashcard, QuizQuestion, StudioDocument } from "./types";
  * longest option is not a giveaway. DERIVED_MATERIAL: practice, never mastery.
  */
 
-export type ChapterNotions = Readonly<{ subject: string; title: string; concepts: readonly Readonly<{ label: string }>[] }>;
+export type ChapterNotions = Readonly<{
+  subject: string;
+  title: string;
+  concepts: readonly Readonly<{ label: string }>[];
+  /** Notions of the other chapters of the same subject: wrong answers for sentence questions. */
+  related?: readonly string[];
+  /** Chapter text (summary, example…) used to keep common-word notions in their sense. */
+  context?: string;
+}>;
 
 const MIN_LABEL_CHARS = 3;
 const CHOICES = 4;
@@ -90,7 +98,96 @@ function distractorsFor(card: Flashcard, pool: readonly Flashcard[], inChapter: 
   return [...candidates.values()].sort((a, b) => b.score - a.score || a.term.localeCompare(b.term)).slice(0, CHOICES - 1).map((item) => item.term);
 }
 
+// --- Sentence questions: a course sentence with the notion blanked out ------------------------
+// Slides rarely say "X est…"; they still use the notion in context. The learner finds which
+// notion of the subject completes the quoted sentence.
+
+const BLANK = "_____";
+const SENTENCE_CHARS = { min: 50, max: 240 };
+const MIN_WORDS = 7;
+const SENTENCES_PER_NOTION = 3;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Whole-word, case-insensitive: "for" never matches "format". */
+function wordPattern(label: string): RegExp {
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(label)}(?![\\p{L}\\p{N}])`, "giu");
+}
+
+const TIMESTAMP = /\[\d{1,2}:\d{2}/;
+const PRIVATE_GLYPHS = /[\uE000-\uF8FF]/;
+const LEADING_NOISE = /^(?:[^\p{L}\p{N}_]+|\d+[.)]?\s+)+/u;
+
+/** A real sentence: no transcript timestamp, table row, code line or slide heading. */
+export function readableSentence(sentence: string): string | null {
+  const text = sentence.replace(LEADING_NOISE, "").trim();
+  if (TIMESTAMP.test(sentence) || PRIVATE_GLYPHS.test(sentence) || !/[.!]$/.test(text) || !/^[\p{Lu}_]/u.test(text)) return null;
+  if ((text.match(/[;(){}=<>]/g) ?? []).length >= 2 || (text.match(/[/·|]/g) ?? []).length >= 2) return null;
+  if ((text.match(/\d/g) ?? []).length / text.length > 0.08) return null;
+  // Slide headings glued together read as one long title-cased "sentence".
+  const words = text.split(/\s+/).slice(1);
+  if (words.filter((word) => /^\p{Lu}/u.test(word)).length / Math.max(1, words.length) > 0.25) return null;
+  return text;
+}
+
+/** A single lowercase word ("objet", "revue") has several senses; acronyms and multi-word terms do not. */
+function commonWord(label: string): boolean {
+  return !/\s/.test(label.trim()) && label === label.toLowerCase();
+}
+
+function clozeQuestions(documents: readonly StudioDocument[], chapter: ChapterNotions): QuizQuestion[] {
+  const labels = chapter.concepts.map((concept) => concept.label.trim()).filter((label) => normalizeText(label).length >= MIN_LABEL_CHARS);
+  const pool = [...new Set([...(chapter.related ?? []), ...labels].map((label) => label.trim()).filter((label) => normalizeText(label).length >= MIN_LABEL_CHARS))];
+  const passages = allPassages(subjectDocuments(documents, chapter.subject));
+  const questions: QuizQuestion[] = [];
+  const asked = new Set<string>();
+  const context = new Set(tokenize(`${chapter.title} ${chapter.context ?? ""}`));
+  for (const label of labels) {
+    const pattern = wordPattern(label);
+    const own = new Set(tokenize(label));
+    const inSense = (sentence: string) => !commonWord(label) || tokenize(sentence).some((token) => !own.has(token) && context.has(token));
+    let found = 0;
+    for (const { document, page, passage } of passages) {
+      if (found >= SENTENCES_PER_NOTION) break;
+      for (const raw of splitSentences(passage.text)) {
+        if (found >= SENTENCES_PER_NOTION) break;
+        const sentence = readableSentence(raw);
+        if (!sentence || !inSense(sentence) || asked.has(normalizeText(sentence))) continue;
+        if (sentence.length < SENTENCE_CHARS.min || sentence.length > SENTENCE_CHARS.max || sentence.includes("?")) continue;
+        if (sentence.split(/\s+/).length < MIN_WORDS || (sentence.match(pattern) ?? []).length !== 1) continue;
+        const answer = phrase(label);
+        const distractors = pool
+          .filter((other) => { const term = phrase(other); return !term.includes(answer) && !answer.includes(term) && !wordPattern(other).test(sentence); })
+          .sort((a, b) => Math.abs(a.length - label.length) - Math.abs(b.length - label.length) || a.localeCompare(b))
+          .slice(0, CHOICES - 1);
+        if (distractors.length < CHOICES - 1) continue;
+        const id = `cloze:${document.id}:${page.pageNumber}:${passage.id}:${conceptKey(label)}`;
+        const choices = [...distractors];
+        choices.splice(stableIndex(id, CHOICES), 0, label);
+        questions.push({
+          id: `quiz:${id}`, cardId: id, answer: label, choices,
+          prompt: `Quelle notion complète cette phrase du cours : « ${sentence.replace(pattern, BLANK)} » ?`,
+          materialKind: "DERIVED_MATERIAL", canonical: false, citations: [citationFor(document, page.pageNumber, passage.id, sentence)],
+        });
+        asked.add(normalizeText(sentence));
+        found += 1;
+      }
+    }
+  }
+  return questions;
+}
+
+/** Definition questions first; sentence questions cover chapters whose sources define nothing. */
 export function chapterSourceQuiz(documents: readonly StudioDocument[], chapter: ChapterNotions, count = 5): QuizQuestion[] {
+  const definitions = definitionQuestions(documents, chapter);
+  const covered = (label: string) => definitions.some((question) => phrase(question.answer).includes(phrase(label)));
+  const sentences = clozeQuestions(documents, chapter).filter((question) => !covered(question.answer));
+  return [...definitions, ...sentences].slice(0, count);
+}
+
+function definitionQuestions(documents: readonly StudioDocument[], chapter: ChapterNotions, count = Infinity): QuizQuestion[] {
   const cards = chapterCards(documents, chapter);
   const pool = cleanCards(subjectDocuments(documents, chapter.subject));
   const inChapter = new Set(cards.map((card) => conceptKey(card.term)));
