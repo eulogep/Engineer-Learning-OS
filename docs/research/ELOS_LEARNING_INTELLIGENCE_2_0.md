@@ -196,3 +196,49 @@ Leçons d’implémentation (vérifiées par les tests) : un seuil BM25 absolu �
 (IDF quasi nul) → la répondabilité repose sur la couverture des termes de la question ; pdf.js extrait les ligatures
 typographiques en fragments (« modi fi er ») → réparées avant découpage ; les voix « en ligne » du navigateur
 enverraient le texte à un service externe → seules les voix `localService` sont utilisées.
+
+## 10. Évaluation FSRS-4.5 vs `CURRENT_V1` sur des historiques réels
+
+Données : `open-spaced-repetition/fsrs-dataset` (Hugging Face, licence MIT, accès libre), dossier `v4`, 6 utilisateurs
+Anki réels (`0342feb`, `03659d3`, `06a3422`, `0886157`, `0efe6f3`, `27e8453`), ≈ 173 000 révisions. Méthode : rejeu par
+carte avec l’évaluateur d’ELOS (`src/modules/scientific-pedagogy/replay.ts`, script `scripts/evaluate-schedulers.ts`) ;
+note Anki 1 = oubli, 2–4 = rappel ; révisions à moins de 12 h ignorées.
+
+| Utilisateur | Prédictions | Rappel observé | Log-loss Leitner | Log-loss FSRS | Brier Leitner | Brier FSRS |
+|---|---|---|---|---|---|---|
+| 0342feb | 25 069 | 77,2 % | 0,6379 | **0,5444** | 0,2011 | **0,1735** |
+| 03659d3 | 4 202 | 81,4 % | 0,5389 | **0,4615** | 0,1666 | **0,1441** |
+| 06a3422 | 4 273 | 74,3 % | 0,6621 | **0,5509** | 0,2200 | **0,1780** |
+| 0886157 | 4 864 | 89,7 % | 0,3664 | **0,3185** | 0,1031 | **0,0900** |
+| 0efe6f3 | 10 149 | 85,7 % | 0,4527 | **0,4074** | 0,1319 | **0,1199** |
+| 27e8453 | 81 428 | 92,8 % | 0,3477 | **0,2720** | 0,0978 | **0,0722** |
+| **Pondéré** | **129 985** | — | **0,4291** | **0,3521** | **0,1268** | **0,1019** |
+
+Résultat [V] : FSRS-4.5 (poids par défaut) prédit mieux le rappel que l’échelle Leitner d’ELOS pour 6 utilisateurs sur 6
+(log-loss −18 %, Brier −20 %).
+
+Limites : utilisateurs d’Anki et non d’ELOS (intervalles choisis par l’algorithme d’Anki) ; Leitner interprété comme
+« intervalle visant 90 % » faute de probabilité native ; poids FSRS non personnalisés ; 6 utilisateurs ; une meilleure
+prédiction de la mémoire ne prouve pas un meilleur apprentissage.
+
+Recommandation : introduire FSRS-4.5 comme planificateur **expérimental** (désactivé par défaut), comparé dans l’app
+sur l’historique des apprenants ELOS (onglet Plan) ; décision de remplacement de `CURRENT_V1` réservée à l’humain.
+
+## 11. Protocole d’évaluation pédagogique avec des apprenants (prêt à lancer)
+
+Question : le Learning Studio (rappel actif cité, socratique, examen blanc) améliore-t-il la réussite **sans aide**
+par rapport à la relecture des mêmes sources ?
+
+- **Plan** : intra-sujet, contrebalancé. Chaque participant étudie deux chapitres équivalents d’un même cours :
+  l’un avec le Studio, l’autre en relecture (même durée, 30 min). Ordre et attribution des chapitres tirés au sort.
+- **Participants** : ≥ 30 étudiants volontaires (calcul de puissance indicatif : effet d = 0,5, α = 0,05, puissance 0,8
+  en mesures appariées → 34). Consentement éclairé, retrait possible, aucune donnée personnelle hors appareil.
+- **Mesures** : test **non assisté** de 10 questions par chapitre (dont 3 de transfert) à J+2 et J+7 ; confiance
+  déclarée (calibration) ; temps passé. Questions rédigées et validées par un enseignant, distinctes des questions
+  générées par le Studio.
+- **Critère principal** : différence de score au test J+7 (Studio – relecture). Secondaire : J+2, transfert,
+  calibration (écart confiance/réussite).
+- **Analyse pré-enregistrée** : test de Wilcoxon apparié (ou t apparié si normalité), taille d’effet avec IC 95 %,
+  aucun sous-groupe non prévu ; résultats publiés même nuls.
+- **Garde-fous** : les résultats de l’étude ne modifient aucune maîtrise canonique ; données anonymisées exportées
+  par les participants eux-mêmes (sauvegarde locale), jamais collectées automatiquement.
