@@ -36,3 +36,21 @@ test("message is deterministic for a given day and rotates the word of the day",
   const word = (text: string) => text.match(/Mot du jour : (.+)/)![1];
   assert.notEqual(word(tomorrow), word(buildMorningMessage(base, now)));
 });
+
+test("evening review: today's chapters, missed questions first, never a mastery claim", async () => {
+  const { buildEveningMessage } = await import("../../../src/modules/learner-snapshot/coach.ts");
+  const practice = {
+    format: "engineer-learning-os/agent-practice", version: 1, generatedAt: "2026-10-23T18:00:00Z", evidence: "DERIVED_PRACTICE",
+    chapters: [
+      { chapterId: "a", title: "IPv4 et masques", subject: "Réseaux", answered: 3, correct: 1, toRetry: 2, lastAt: "2026-10-23T15:00:00Z" },
+      { chapterId: "b", title: "Sprints", subject: "Projet", answered: 1, correct: 1, toRetry: 0, lastAt: "2026-10-20T15:00:00Z" },
+    ],
+  } as const;
+  const message = buildEveningMessage(practice, new Date("2026-10-23T17:00:00Z"));
+  assert.match(message, /Aujourd’hui : IPv4 et masques\./);
+  assert.match(message, /IPv4 et masques : 2 questions ratées/);
+  assert.ok(!/Sprints :/.test(message));
+  assert.match(message, /repose mes questions ratées/);
+  assert.match(message, /la maîtrise se prouve dans ELOS/);
+  assert.match(buildEveningMessage(null, new Date()), /Pas encore d’entraînement/);
+});

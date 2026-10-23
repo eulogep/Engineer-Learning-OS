@@ -112,9 +112,8 @@ test("course questions come from the learner's files, are graded after the attem
   assert.ok(!JSON.stringify(question).includes("quote"), "no citation before the attempt");
   assert.match(String((await call("elos_course_exercise", { exercise_id: question.exercise_id })).error), /answer first/);
 
-  const wrong = question.options.find((option) => !/IPv4|Masque/.test(option)) ?? question.options[0];
-  const graded = await call("elos_course_exercise", { exercise_id: question.exercise_id, answer: wrong.slice(0, 1) }) as { correct: boolean; citation: { quote: string }; evidence: string };
-  assert.equal(typeof graded.correct, "boolean");
+  const graded = await call("elos_course_exercise", { exercise_id: question.exercise_id, answer: "aucune de ces notions" }) as { correct: boolean; citation: { quote: string }; evidence: string };
+  assert.equal(graded.correct, false);
   assert.ok(graded.citation.quote.length > 0);
   assert.match(graded.evidence, /not mastery/);
 
@@ -122,6 +121,8 @@ test("course questions come from the learner's files, are graded after the attem
   assert.ok(!log.startsWith(root + path.sep), "the log lives outside the shared course folder");
   assert.ok(existsSync(log));
   assert.equal(readPractice(log).length, 1);
+  const retry = await call("elos_course_exercise", { retry: true }) as { exercise_id?: string; retry: boolean; message?: string };
+  assert.equal(retry.exercise_id, question.exercise_id, "the missed question comes back first");
   const summary = parseAgentPractice(readFileSync(path.join(base, "elos-practice.json"), "utf8"));
   assert.deepEqual([summary.chapters[0].chapterId, summary.chapters[0].answered], ["ch_ip", 1]);
   const map = await call("elos_course_map") as { bases: { chapters: { practice: { answered: number } | null }[] }[] };

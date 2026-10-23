@@ -125,3 +125,21 @@ hermes cron create "0 8 * * *" --name "ELOS coach du matin" --script elos-mornin
 
 Avec une messagerie configurée dans Hermes (`hermes gateway setup`), remplace `--deliver local` par `telegram`,
 `signal`… Le contenu (vocabulaire, jeux de rôle, intitulés de notions) est générique ; aucun passage de cours n’y figure.
+
+### Révision du soir
+
+`scripts/evening-review.ts` lit `elos-practice.json` (écrit par le serveur après chaque QCM fait avec l’agent) et
+liste les chapitres pratiqués dans la journée et les questions ratées à refaire. L’apprenant répond « repose mes
+questions ratées » : le tuteur appelle `elos_course_exercise` avec `retry: true`, qui repose la dernière question
+ratée encore disponible. Le message ne contient que des intitulés de chapitres et des comptes.
+
+```bash
+cat > ~/.hermes/scripts/elos-evening-review.sh <<'SH'
+#!/bin/bash
+cd "$HOME/Desktop/Developer/daily-english-mission" || exit 1
+ELOS_STATE_FILE="$HOME/ELOS-Hermes/elos-state.json" exec "$(command -v node)" --experimental-strip-types --no-warnings \
+  --import ./tests/register-loader.mjs scripts/evening-review.ts
+SH
+chmod +x ~/.hermes/scripts/elos-evening-review.sh
+hermes cron create "0 19 * * *" --name "ELOS révision du soir" --script elos-evening-review.sh --no-agent --deliver telegram,whatsapp
+```
