@@ -83,12 +83,32 @@ calibration and observed errors, including when a response copies the reference.
 The correction displays the source excerpt and a human-review checklist. This
 does not yet implement a validated technical rubric or canonical assessment.
 The current UI explicitly labels selected sources as a training scope, not a
-confirmed official exam scope. Scope confirmation remains required follow-up.
+  confirmed official exam scope. Scope confirmation remains required follow-up.
 
 Tests: `tests/unit/learning-studio/open-exam.test.ts` covers duration limits,
 pending-response persistence, source-grounded code exercises and deadline bounds.
 The existing full suite also checks canonical IndexedDB recovery; it does not
 replace browser testing of this new Studio UI or its schema-3 import pipeline.
+
+## Source-attested exam scope
+
+The exam setup now offers a distinct source-attested mode. The learner selects
+one subject, an instruction passage and the exact taught passages covered by it,
+then explicitly attests that interpretation. This is labelled
+`LEARNER_ATTESTED_FROM_SOURCE`, never automated teacher verification. An ordinary
+training selection still does not confirm an official exam scope.
+
+The engine rejects missing references, version/hash mismatches, cross-subject
+references, empty scope, programme-only and unverified catalogue sources. It
+generates questions only from the selected full passages; there is no fallback
+to the whole library. No dates are inferred as future deadlines. The instruction,
+passage references and confirmation timestamp are copied into the exam and its
+derived attempt, preserving the scope used for that attempt. No mastery event
+is produced. Tests live in `tests/unit/learning-studio/exam-scope.test.ts`.
+
+Browser interaction validation of this setup and real teacher-instruction
+validation remain required; a valid citation alone cannot prove the semantic
+correctness of the learner's attestation.
 
 ## Rollback
 
