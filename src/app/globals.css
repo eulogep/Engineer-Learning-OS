@@ -120,3 +120,71 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Scoped Daily English studio tokens (Engineer Learning OS palette) */
+.elos-studio {
+  --studio-primary: #059669;
+  --studio-primary-shadow: #047857;
+  --studio-primary-shine: #34d399;
+  --studio-primary-soft: #d1fae5;
+  --studio-info: #6366f1;
+  --studio-info-shadow: #4338ca;
+  --studio-info-soft: #e0e7ff;
+  --studio-orange: #f97316;
+  --studio-orange-shadow: #c2410c;
+  --studio-orange-soft: #ffedd5;
+  --studio-gold: #fbbf24;
+  --studio-gold-shadow: #d97706;
+  --studio-danger: #f43f5e;
+  --studio-danger-shadow: #e11d48;
+  --studio-danger-soft: #ffe4e6;
+  --studio-purple: #a855f7;
+  --studio-purple-shadow: #7e22ce;
+  --studio-teal: #06b6d4;
+  --studio-teal-shadow: #0e7490;
+  --studio-surface: #ffffff;
+  --studio-surface-muted: #f8fafc;
+  --studio-border: #e2e8f0;
+  --studio-ink: #1e293b;
+  --studio-ink-muted: #64748b;
+  font-family: ui-rounded, "SF Pro Rounded", var(--font-geist-sans), system-ui, sans-serif;
+}
+
+@keyframes studio-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes studio-pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+.animate-studio-float {
+  animation: studio-float 2.8s ease-in-out infinite;
+}
+
+.animate-studio-ring {
+  animation: studio-pulse-ring 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-studio-float,
+  .animate-studio-ring {
+    animation: none;
+  }
+}
