@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { buildMockExam, gradeMockExam, type MockExam, type MockExamResult } from "@/modules/learning-studio/exam";
 import type { Confidence, StudioCitation, StudioDocument, StudioQuizAttempt } from "@/modules/learning-studio/types";
+import { allPassages, citationFor } from "@/modules/learning-studio/core";
+import type { ExamScopeConfirmation } from "@/modules/learning-studio/exam-scope";
 
 const CONFIDENCE_LABEL: Record<Confidence, string> = { SURE: "Sûr", UNSURE: "Hésitant", GUESS: "Au hasard" };
 
@@ -31,6 +33,23 @@ export function MockExamPanel({ documents, onFinished, renderCitation, onActiveC
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [confidences, setConfidences] = useState<Record<string, Confidence>>({});
   const [result, setResult] = useState<MockExamResult | null>(null);
+  const [confirmedMode, setConfirmedMode] = useState(false);
+  const [subjectId, setSubjectId] = useState("");
+  const [instructionKey, setInstructionKey] = useState("");
+  const [passageKeys, setPassageKeys] = useState<string[]>([]);
+  const [attested, setAttested] = useState(false);
+  const [scopeError, setScopeError] = useState("");
+  const scopePassages = allPassages(documents.filter((document) => document.subjectId === subjectId && !!document.provenance));
+  const passageKey = (documentId: string, pageNumber: number, passageId: string) => JSON.stringify([documentId, pageNumber, passageId]);
+  function makeScope(): ExamScopeConfirmation | undefined {
+    if (!confirmedMode) return undefined;
+    const instruction = scopePassages.find(({ document, page, passage }) => passageKey(document.id, page.pageNumber, passage.id) === instructionKey);
+    if (!instruction || !attested) throw new Error("Choisissez une consigne et confirmez votre lecture du périmètre.");
+    return { subjectId, confirmation: "LEARNER_ATTESTED_FROM_SOURCE", confirmedAt: new Date().toISOString(),
+      instruction: citationFor(instruction.document, instruction.page.pageNumber, instruction.passage.id, instruction.passage.text),
+      passages: scopePassages.filter(({ document, page, passage }) => passageKeys.includes(passageKey(document.id, page.pageNumber, passage.id)))
+        .map(({ document, page, passage }) => citationFor(document, page.pageNumber, passage.id, passage.text)) };
+  }
 
   useEffect(() => {
     if (!exam || result) return;
@@ -42,7 +61,15 @@ export function MockExamPanel({ documents, onFinished, renderCitation, onActiveC
   const timeUp = !!exam && !result && remaining <= 0;
 
   function start() {
-    const created = buildMockExam(documents, count, Date.now() % 2_147_483_647, new Date(), { durationSeconds: minutes * 60, includeOpenResponses: includeOpen });
+    let created: MockExam;
+    try {
+      created = buildMockExam(documents, count, Date.now() % 2_147_483_647, new Date(), { durationSeconds: minutes * 60, includeOpenResponses: includeOpen, scope: makeScope() });
+      if (created.questions.length < 2) throw new Error("NOT_ENOUGH_QUESTIONS");
+    } catch {
+      setScopeError("Périmètre incomplet, source non confirmée ou moins de deux questions disponibles. Vérifiez la consigne et les passages sélectionnés.");
+      return;
+    }
+    setScopeError("");
     setExam(created); setStartedAt(new Date()); setNow(Date.now());
     setAnswers({}); setConfidences({}); setResult(null);
     onActiveChange(true);
@@ -77,6 +104,35 @@ export function MockExamPanel({ documents, onFinished, renderCitation, onActiveC
           </label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={includeOpen} onChange={(event) => setIncludeOpen(event.target.checked)} />Inclure des réponses libres (validation humaine requise)</label>
           <p className="text-xs text-amber-800">Périmètre d’entraînement : sources sélectionnées. Ce choix ne confirme pas le programme officiel de l’examen.</p>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={confirmedMode} onChange={(event) => { setConfirmedMode(event.target.checked); setAttested(false); }} />Limiter à un périmètre confirmé par une consigne</label>
+          {confirmedMode && <div className="space-y-2 rounded border p-3">
+            <label className="block">Matière de l’examen
+              <select className="block w-full rounded border p-2" value={subjectId} onChange={(event) => { setSubjectId(event.target.value); setInstructionKey(""); setPassageKeys([]); setAttested(false); }}>
+                <option value="">Choisir une matière</option>
+                {[...new Map(documents.map((document) => [document.subjectId, document.subjectLabel])).entries()].map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+              </select>
+            </label>
+            <label className="block">Passage contenant la consigne d’examen
+              <select className="block w-full rounded border p-2" value={instructionKey} onChange={(event) => { setInstructionKey(event.target.value); setAttested(false); }}>
+                <option value="">Choisir une consigne sourcée</option>
+                {scopePassages.map(({ document, page, passage }) => {
+                  const key = passageKey(document.id, page.pageNumber, passage.id);
+                  return <option key={key} value={key}>{document.title} · {page.pageNumber} · {passage.text.slice(0, 100)}</option>;
+                })}
+              </select>
+            </label>
+            <p className="text-xs">Sélectionnez uniquement les passages enseignés couverts par cette consigne. Les sources programme seul ou non vérifiées sont refusées.</p>
+            <div className="max-h-48 space-y-2 overflow-auto">
+              {scopePassages.map(({ document, page, passage }) => {
+                const key = passageKey(document.id, page.pageNumber, passage.id);
+                return <label key={key} className="flex gap-2 text-xs"><input type="checkbox" checked={passageKeys.includes(key)}
+                  onChange={(event) => { setPassageKeys((keys) => event.target.checked ? [...keys, key] : keys.filter((item) => item !== key)); setAttested(false); }} />
+                  <span>{document.title} · {page.pageNumber} : {passage.text}</span></label>;
+              })}
+            </div>
+            <label className="flex gap-2 text-xs"><input type="checkbox" checked={attested} onChange={(event) => setAttested(event.target.checked)} />J’atteste que cette consigne confirme les passages choisis. Cette déclaration n’est pas une vérification automatique de l’enseignant.</label>
+          </div>}
+          {scopeError && <p role="alert" className="text-red-700">{scopeError}</p>}
           <Button type="button" onClick={start} disabled={available < 2}>Commencer l’examen</Button>
           {available < 2 && <p className="text-amber-700">Sélectionne des sources contenant des définitions ou du code PHP/SQL pour générer des questions.</p>}
         </CardContent>
@@ -91,6 +147,7 @@ export function MockExamPanel({ documents, onFinished, renderCitation, onActiveC
         {!result && <span role="timer" aria-live="off" className={`font-mono text-sm ${remaining < 60 ? "text-red-700" : "text-slate-700"}`}>{clock(remaining)}</span>}
       </CardHeader>
       <CardContent className="space-y-3">
+        {exam.scope && <p className="text-xs">Périmètre sourcé attesté par l’apprenant · {exam.scope.passages.length} passage(s) · aucune maîtrise attribuée.</p>}
         {timeUp && <p role="alert" className="rounded-md bg-amber-50 p-2 text-sm text-amber-900">Temps écoulé : tes réponses sont figées.</p>}
         {exam.questions.map((question, index) => {
           const graded = result?.attempt.items.find((item) => item.questionId === question.id);

@@ -1,5 +1,6 @@
 import { deriveQuiz, deriveFlashcards, allPassages, citationFor } from "./core";
 import type { Confidence, QuizQuestion, StudioDocument, StudioQuizAttempt } from "./types";
+import { documentsForExamScope, type ExamScopeConfirmation } from "./exam-scope";
 
 /**
  * Mock exam: timed, no hints, no citations until the end, questions interleaved
@@ -8,8 +9,8 @@ import type { Confidence, QuizQuestion, StudioDocument, StudioQuizAttempt } from
  */
 
 export type ExamQuestion = QuizQuestion & Readonly<{ responseType?: "MULTIPLE_CHOICE" | "OPEN_RESPONSE" }>;
-export type MockExam = Readonly<{ id: string; createdAt: string; durationSeconds: number; questions: readonly ExamQuestion[] }>;
-export type ExamOptions = Readonly<{ durationSeconds?: number; includeOpenResponses?: boolean }>;
+export type MockExam = Readonly<{ id: string; createdAt: string; durationSeconds: number; questions: readonly ExamQuestion[]; scope?: ExamScopeConfirmation }>;
+export type ExamOptions = Readonly<{ durationSeconds?: number; includeOpenResponses?: boolean; scope?: ExamScopeConfirmation }>;
 
 export const SECONDS_PER_QUESTION = 60;
 
@@ -35,6 +36,7 @@ function shuffle<T>(items: readonly T[], random: () => number): T[] {
 
 /** Round-robin across documents so that consecutive questions come from different courses. */
 export function buildMockExam(documents: readonly StudioDocument[], count: number, seed: number, now: Date, options: ExamOptions = {}): MockExam {
+  if (options.scope) documents = documentsForExamScope(documents, options.scope);
   if (!Number.isInteger(count) || count < 1 || count > 100) throw new Error("INVALID_EXAM_COUNT");
   if (options.durationSeconds !== undefined && (!Number.isInteger(options.durationSeconds) || options.durationSeconds < 60 || options.durationSeconds > 10800)) throw new Error("INVALID_EXAM_DURATION");
   const random = seededRandom(seed);
@@ -68,7 +70,8 @@ export function buildMockExam(documents: readonly StudioDocument[], count: numbe
       answer: card.definition };
     return { ...question, responseType: "MULTIPLE_CHOICE", choices: shuffle(question.choices, random) };
   });
-  return { id: `exam:${seed}`, createdAt: now.toISOString(), durationSeconds: options.durationSeconds ?? questions.length * SECONDS_PER_QUESTION, questions };
+  return { id: `exam:${seed}`, createdAt: now.toISOString(), durationSeconds: options.durationSeconds ?? questions.length * SECONDS_PER_QUESTION, questions,
+    ...(options.scope ? { scope: structuredClone(options.scope) } : {}) };
 }
 
 export type CalibrationRow = Readonly<{ confidence: Confidence; correct: number; total: number }>;
@@ -111,6 +114,7 @@ export function gradeMockExam(
     attempt: {
       id: `${exam.id}:${submittedAt.getTime()}`, at: submittedAt.toISOString(), evidenceKind: "DERIVED_PRACTICE", canonical: false,
       assisted: false, mode: "MOCK_EXAM", durationSeconds: elapsed, items, pendingResponses,
+      ...(exam.scope ? { examScope: structuredClone(exam.scope) } : {}),
     },
     score: items.filter((item) => item.correct).length,
     total: items.length,

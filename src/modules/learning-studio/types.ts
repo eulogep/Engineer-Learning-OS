@@ -79,6 +79,7 @@ export type StudioQuizAttempt = Readonly<{
   assisted: boolean;
   mode?: "QUIZ" | "MOCK_EXAM";
   durationSeconds?: number;
+  examScope?: import("./exam-scope").ExamScopeConfirmation;
   pendingResponses?: readonly Readonly<{
     questionId: string;
     response: string;
