@@ -27,7 +27,7 @@ export default function TodayPage() {
           <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
             <div className="space-y-2">
               <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700"><BookOpenCheck className="size-4" aria-hidden="true" />Continuer à apprendre</p>
-              <CardTitle className="text-xl">Daily English Mission</CardTitle>
+              <CardTitle className="text-xl">Daily English</CardTitle>
               <p className="max-w-xl text-sm leading-6 text-slate-600">Le parcours historique reste disponible pendant la construction progressive d’Engineer Learning OS.</p>
             </div>
             <Button asChild variant="outline"><Link href="/daily-english">Ouvrir<ArrowRight aria-hidden="true" /></Link></Button>

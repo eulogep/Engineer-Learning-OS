@@ -208,7 +208,7 @@ export function EvidenceWorkspace() {
 }
 
 const competencyPresentation: Record<CompetencyId, { subject: string; title: string; evidenceLabel: string }> = {
-  DAILY_ENGLISH_GUIDED_PRACTICE: { subject: "Anglais quotidien", title: "Pratique guidée quotidienne", evidenceLabel: "Daily English Mission" },
+  DAILY_ENGLISH_GUIDED_PRACTICE: { subject: "Anglais quotidien", title: "Pratique guidée quotidienne", evidenceLabel: "Daily English" },
   EXCEL_CSV_IMPORT: { subject: "Excel / Données", title: "Import CSV dans Excel", evidenceLabel: "Mission Excel CSV Foundations" },
   TECHNICAL_ENGLISH_EXPLANATION: { subject: "Anglais professionnel", title: "Explication technique en anglais", evidenceLabel: "Mission Technical English" },
   DATA_ANOMALY_IDENTIFICATION: { subject: "Pratique professionnelle", title: "Identifier une anomalie de données", evidenceLabel: "Scénario professionnel industriel" },

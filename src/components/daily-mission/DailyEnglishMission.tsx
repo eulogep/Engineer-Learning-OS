@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Compass,
   Dumbbell,
+  House,
   Mic,
   PartyPopper,
   PenLine,
@@ -80,9 +81,14 @@ import { SpeedBlitzGame } from "@/components/daily-mission/studio/SpeedBlitzGame
 import { TrophiesAndShopView } from "@/components/daily-mission/studio/TrophiesAndShopView";
 import { GlossyProgressBar } from "@/components/daily-mission/studio/StudioPrimitives";
 import { playTapSound } from "@/components/daily-mission/studio/sound-effects";
+import { StudioHome } from "@/components/daily-mission/studio/StudioHome";
+import { RewardMoments } from "@/components/daily-mission/studio/RewardMoments";
+import { detectRewardEvents, type RewardEvent } from "@/modules/daily-english/reward-events";
+import type { StudioIntentId, TimeBudget } from "@/modules/daily-english/studio-intents";
 
 type StudioMode =
   | "onboarding"
+  | "home"
   | "path"
   | "stories"
   | "practice"
@@ -204,8 +210,11 @@ function DailyEnglishStudio() {
 
   const [modeOverride, setModeOverride] = useState<StudioMode | null>(null);
   const mode: StudioMode =
-    modeOverride ?? (gamification.onboarding.completed ? "path" : "onboarding");
-  const [returnMode, setReturnMode] = useState<StudioMode>("path");
+    modeOverride ?? (gamification.onboarding.completed ? "home" : "onboarding");
+  const [returnMode, setReturnMode] = useState<StudioMode>("home");
+  const [timeBudget, setTimeBudget] = useState<TimeBudget>(5);
+  const [rewardQueue, setRewardQueue] = useState<readonly RewardEvent[]>([]);
+  const previousGamificationRef = useRef<GamificationState | null>(null);
   const [activeLesson, setActiveLesson] = useState<{
     node: PathNode;
     exercises: InteractiveExercise[];
@@ -259,6 +268,21 @@ function DailyEnglishStudio() {
     });
     persistGamification(claimCompletedQuests(summary.state, true, todayKey).state);
   }, [gamification, isClient, mission?.completed, persistGamification, todayKey]);
+
+  // Calm by default: colour and confetti only when something is earned.
+  useEffect(() => {
+    if (!isClient) return;
+    const previous = previousGamificationRef.current;
+    previousGamificationRef.current = gamification;
+    if (!previous || previous === gamification) return;
+    const events = detectRewardEvents(previous, gamification, Boolean(mission?.completed)).filter(
+      // The lesson victory screen already lists the quests it completed.
+      (event) => !(mode === "lesson" && event.kind === "quest"),
+    );
+    if (events.length > 0) setRewardQueue((queue) => [...queue, ...events]);
+  }, [gamification, isClient, mission?.completed, mode]);
+
+  const dismissReward = useCallback(() => setRewardQueue((queue) => queue.slice(1)), []);
 
   const localReviews = useMemo(() => {
     if (!isClient) return {};
@@ -315,7 +339,7 @@ function DailyEnglishStudio() {
         dailyGoalXp: prefs.dailyGoalXp,
       });
       persistGamification(next);
-      setModeOverride("path");
+      setModeOverride("home");
     },
     [persistGamification],
   );
@@ -323,11 +347,11 @@ function DailyEnglishStudio() {
   const handleSkipOnboarding = useCallback(() => {
     const next = updateOnboardingPreferences(getGamificationSnapshot(), { completed: true });
     persistGamification(next);
-    setModeOverride("path");
+    setModeOverride("home");
   }, [persistGamification]);
 
   const handleStartNode = useCallback(
-    (node: PathNode) => {
+    (node: PathNode, from: StudioMode = "path") => {
       if (node.kind === "mission_guided") {
         setModeOverride("guided");
         return;
@@ -335,14 +359,14 @@ function DailyEnglishStudio() {
       const targetWords = wordsForPathNode(node, dailyVocabulary, VOCABULARY);
       const seed = `${node.id}:${todayKey}:${gamification.lessonsCompletedToday}`;
       const exercises = generateLessonExercises(targetWords, node.kind, seed, allGeneratorWords);
-      setReturnMode("path");
+      setReturnMode(from);
       setActiveLesson({ node, exercises });
       setModeOverride("lesson");
     },
     [allGeneratorWords, dailyVocabulary, gamification.lessonsCompletedToday, todayKey],
   );
 
-  const handleLaunchGrammarDrill = useCallback(() => {
+  const handleLaunchGrammarDrill = useCallback((from: StudioMode = "practice") => {
     const seed = `${todayKey}:${gamification.grammarDrillsCompleted}:${gamification.lessonsCompletedToday}`;
     const exercises = generateGrammarDrillExercises(seed, allGeneratorWords);
     const drillNode: PathNode = {
@@ -357,12 +381,12 @@ function DailyEnglishStudio() {
       state: "unlocked",
       stars: 0,
     };
-    setReturnMode("practice");
+    setReturnMode(from);
     setActiveLesson({ node: drillNode, exercises, isGrammarDrill: true });
     setModeOverride("lesson");
   }, [allGeneratorWords, gamification.grammarDrillsCompleted, gamification.lessonsCompletedToday, todayKey]);
 
-  const handleLaunchSmartReview = useCallback(() => {
+  const handleLaunchSmartReview = useCallback((from: StudioMode = "practice") => {
     const seed = `smart:${todayKey}:${gamification.lessonsCompletedToday}`;
     const exercises = generateLessonExercises(allGeneratorWords, "checkpoint", seed, allGeneratorWords);
     const reviewNode: PathNode = {
@@ -377,7 +401,7 @@ function DailyEnglishStudio() {
       state: "unlocked",
       stars: 0,
     };
-    setReturnMode("practice");
+    setReturnMode(from);
     setActiveLesson({ node: reviewNode, exercises });
     setModeOverride("lesson");
   }, [allGeneratorWords, gamification.lessonsCompletedToday, todayKey]);
@@ -466,6 +490,44 @@ function DailyEnglishStudio() {
     [persistGamification],
   );
 
+  const nextLesson =
+    [...units, ...bonusUnits]
+      .flatMap((unit) => unit.nodes)
+      .find((node) => node.state === "current" || node.state === "unlocked") ?? null;
+
+  const handleChooseIntent = (intent: StudioIntentId) => {
+    switch (intent) {
+      case "continue_path":
+        if (nextLesson) handleStartNode(nextLesson, "home");
+        else setModeOverride("path");
+        return;
+      case "speak":
+        setModeOverride("guided");
+        return;
+      case "story":
+        setModeOverride("stories");
+        return;
+      case "blitz":
+        setReturnMode("home");
+        setModeOverride("blitz");
+        return;
+      case "grammar":
+        handleLaunchGrammarDrill("home");
+        return;
+      case "review":
+        handleLaunchSmartReview("home");
+        return;
+    }
+  };
+
+  const rewardLayer = (
+    <RewardMoments
+      queue={mode === "lesson" ? [] : rewardQueue}
+      soundEnabled={gamification.onboarding.soundEnabled}
+      onDismiss={dismissReward}
+    />
+  );
+
   if (mode === "onboarding") {
     return (
       <StudioOnboarding
@@ -505,34 +567,35 @@ function DailyEnglishStudio() {
         soundEnabled={gamification.onboarding.soundEnabled}
         equippedAccessory={gamification.equippedAccessory}
         onFinish={handleBlitzFinish}
-        onExit={() => setModeOverride("practice")}
+        onExit={() => setModeOverride(returnMode === "home" ? "home" : "practice")}
       />
     );
   }
 
-  // Primary Studio Tabs Bar (visible on path / stories / practice / shop)
+  // Studio sections bar (visible on home / path / stories / practice / shop)
   const studioTabs: ReadonlyArray<{
-    id: "path" | "stories" | "practice" | "shop" | "guided";
+    id: "home" | "path" | "stories" | "practice" | "shop" | "guided";
     label: string;
     badge?: string;
     icon: typeof Compass;
   }> = [
-    { id: "path", label: "Parcours", badge: "9 unités", icon: Compass },
+    { id: "home", label: "Accueil", icon: House },
+    { id: "path", label: "Parcours", icon: Compass },
     {
       id: "stories",
       label: "Histoires",
       badge: `${gamification.completedStoryIds.length}/${ENGINEERING_STORIES.length}`,
       icon: BookOpenText,
     },
-    { id: "practice", label: "Entraînement", badge: "240 mots", icon: Dumbbell },
-    { id: "shop", label: "Boutique & Succès", icon: Trophy },
-    { id: "guided", label: "Mission orale", icon: Mic },
+    { id: "practice", label: "Entraînement", icon: Dumbbell },
+    { id: "guided", label: "Oral guidé", icon: Mic },
+    { id: "shop", label: "Récompenses", icon: Trophy },
   ];
 
   const renderTabBar = () => (
     <nav
       aria-label="Sections du Studio Daily English"
-      className="elos-studio mb-5 flex items-center gap-2 overflow-x-auto pb-1"
+      className="elos-studio mb-6 flex items-center gap-1 overflow-x-auto border-b border-[#E2E8F0]"
     >
       {studioTabs.map((tab) => {
         const Icon = tab.icon;
@@ -546,32 +609,53 @@ function DailyEnglishStudio() {
               setModeOverride(tab.id);
             }}
             aria-current={active ? "page" : undefined}
-            className={`inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-2xl border-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${
+            className={`-mb-px inline-flex shrink-0 cursor-pointer items-center gap-2 border-b px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059669] ${
               active
-                ? "border-[#047857] bg-[#059669] text-white shadow-[0_3px_0_#047857]"
-                : "border-[#E2E8F0] bg-white text-[#475569] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#1E293B]"
+                ? "border-[#059669] font-semibold text-[#047857]"
+                : "border-transparent text-[#64748B] hover:text-[#1E293B]"
             }`}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-4 w-4" aria-hidden="true" />
             <span>{tab.label}</span>
-            {tab.badge && (
-              <span
-                className={`rounded-lg px-1.5 py-0.5 text-[10px] font-black ${
-                  active ? "bg-white/20 text-white" : "bg-[#F1F5F9] text-[#64748B]"
-                }`}
-              >
-                {tab.badge}
-              </span>
-            )}
+            {tab.badge && <span className="text-xs text-[#94A3B8]">{tab.badge}</span>}
           </button>
         );
       })}
     </nav>
   );
 
+  if (mode === "home") {
+    return (
+      <div className="elos-studio">
+        {rewardLayer}
+        {renderTabBar()}
+        <StudioHome
+          context={{
+            lessonsCompletedToday: gamification.lessonsCompletedToday,
+            missionCompletedToday: Boolean(mission?.completed),
+            storiesCompleted: gamification.completedStoryIds.length,
+            storiesTotal: ENGINEERING_STORIES.length,
+            hearts: gamification.hearts,
+            nextLessonTitle: nextLesson?.title ?? null,
+          }}
+          timeBudget={timeBudget}
+          streak={gamification.streak}
+          todayXp={gamification.todayXp}
+          dailyGoalXp={gamification.onboarding.dailyGoalXp}
+          gems={gamification.gems}
+          soundEnabled={gamification.onboarding.soundEnabled}
+          equippedAccessory={gamification.equippedAccessory}
+          onTimeBudgetChange={setTimeBudget}
+          onChoose={handleChooseIntent}
+        />
+      </div>
+    );
+  }
+
   if (mode === "path") {
     return (
       <div>
+        {rewardLayer}
         {renderTabBar()}
         <LearningPathView
           gamification={gamification}
@@ -582,7 +666,7 @@ function DailyEnglishStudio() {
           todayLabel={todayText}
           dailyVocabulary={dailyVocabulary}
           allVocabulary={VOCABULARY}
-          onStartNode={handleStartNode}
+          onStartNode={(node) => handleStartNode(node, "path")}
           onOpenGuidedMission={() => setModeOverride("guided")}
           onRefillHearts={handleRefillHearts}
           onToggleSound={handleToggleSound}
@@ -595,6 +679,7 @@ function DailyEnglishStudio() {
   if (mode === "stories") {
     return (
       <div>
+        {rewardLayer}
         {renderTabBar()}
         <StoriesView
           completedStoryIds={gamification.completedStoryIds}
@@ -609,6 +694,7 @@ function DailyEnglishStudio() {
   if (mode === "practice") {
     return (
       <div>
+        {rewardLayer}
         {renderTabBar()}
         <PracticeHubView
           bestBlitzScore={gamification.bestBlitzScore}
@@ -616,9 +702,12 @@ function DailyEnglishStudio() {
           reviews={localReviews}
           soundEnabled={gamification.onboarding.soundEnabled}
           equippedAccessory={gamification.equippedAccessory}
-          onLaunchBlitz={() => setModeOverride("blitz")}
-          onLaunchGrammarDrill={handleLaunchGrammarDrill}
-          onLaunchSmartReview={handleLaunchSmartReview}
+          onLaunchBlitz={() => {
+            setReturnMode("practice");
+            setModeOverride("blitz");
+          }}
+          onLaunchGrammarDrill={() => handleLaunchGrammarDrill("practice")}
+          onLaunchSmartReview={() => handleLaunchSmartReview("practice")}
         />
       </div>
     );
@@ -627,6 +716,7 @@ function DailyEnglishStudio() {
   if (mode === "shop") {
     return (
       <div>
+        {rewardLayer}
         {renderTabBar()}
         <TrophiesAndShopView
           gamification={gamification}
@@ -643,21 +733,22 @@ function DailyEnglishStudio() {
   const stepPct = Math.round(((stepIndex + 1) / STEPS.length) * 100);
 
   return (
-    <div className="elos-studio overflow-hidden rounded-3xl border-2 border-[#E2E8F0] bg-white shadow-sm">
-      <header className="border-b-2 border-[#E2E8F0] bg-white">
+    <div className="elos-studio overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white shadow-sm">
+      {rewardLayer}
+      <header className="border-b border-[#E2E8F0] bg-white">
         <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setModeOverride("path")}
-              className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl border-2 border-[#E2E8F0] bg-white px-3 text-xs font-extrabold uppercase tracking-wider text-[#334155] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC] active:translate-y-[2px] active:shadow-none"
+              onClick={() => setModeOverride("home")}
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-[#CBD5E1] bg-white px-3 text-sm text-[#334155] hover:bg-[#F8FAFC]"
             >
               <ArrowLeft className="h-4 w-4" />
-              Parcours
+              Accueil
             </button>
             <div>
-              <h1 className="text-lg font-black tracking-tight text-[#1E293B]">
-                Mission du jour (6 étapes)
+              <h1 className="text-lg font-bold tracking-tight text-[#1E293B]">
+                Oral guidé · 6 étapes
               </h1>
               <p className="text-xs font-semibold text-[#64748B]">
                 {todayText}
@@ -676,13 +767,13 @@ function DailyEnglishStudio() {
             {persistence === "browser" && (
               <Badge
                 variant="outline"
-                className="rounded-xl border-2 border-[#E2E8F0] text-xs font-bold text-[#64748B]"
+                className="rounded-xl border border-[#E2E8F0] text-xs font-bold text-[#64748B]"
                 title="Progression enregistrée uniquement dans ce navigateur"
               >
                 Mode local
               </Badge>
             )}
-            <Badge className="rounded-xl bg-[#D1FAE5] px-3 py-1 text-xs font-black text-[#047857] hover:bg-[#D1FAE5]">
+            <Badge className="rounded-xl bg-[#D1FAE5] px-3 py-1 text-xs font-bold text-[#047857] hover:bg-[#D1FAE5]">
               Étape {stepIndex + 1}/{STEPS.length}
             </Badge>
           </div>
@@ -704,9 +795,9 @@ function DailyEnglishStudio() {
                 }}
                 disabled={!isPast && !isActive}
                 aria-current={isActive ? "step" : undefined}
-                className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl border-2 px-3 py-1.5 text-xs font-extrabold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 ${
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 ${
                   isActive
-                    ? "border-[#047857] bg-[#059669] text-white shadow-[0_3px_0_#047857]"
+                    ? "border-[#047857] bg-[#059669] text-white"
                     : isPast
                       ? "cursor-pointer border-[#A7F3D0] bg-[#D1FAE5]/60 text-[#047857] hover:bg-[#D1FAE5]"
                       : "cursor-not-allowed border-[#E2E8F0] bg-[#F8FAFC] text-[#94A3B8]"
@@ -722,7 +813,7 @@ function DailyEnglishStudio() {
 
       {error && (
         <div className="mx-auto max-w-2xl px-4 pt-3">
-          <Card className="border-2 border-[#FECDD3] bg-[#FFE4E6]">
+          <Card className="border border-[#FECDD3] bg-[#FFE4E6]">
             <CardContent className="flex items-center justify-between p-3">
               <p className="text-sm font-bold text-[#E11D48]">{error}</p>
               <Button

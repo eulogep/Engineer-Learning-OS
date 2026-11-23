@@ -63,17 +63,17 @@ export function TrophiesAndShopView({
   return (
     <div className="elos-studio space-y-8">
       {/* Mascot & Wallet Hero */}
-      <div className="flex flex-wrap items-center justify-between gap-5 rounded-3xl border-2 border-[#E2E8F0] bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-5 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
         <div className="flex items-center gap-4">
           <VoltMascot mood="happy" size={96} accessory={gamification.equippedAccessory} />
           <div className="space-y-1">
-            <p className="text-xs font-black uppercase tracking-wider text-[#6366F1]">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#6366F1]">
               Boutique locale & Succès
             </p>
-            <h2 className="text-xl font-black text-[#1E293B] sm:text-2xl">
+            <h2 className="text-xl font-bold text-[#1E293B] sm:text-2xl">
               {unlockedCount}/{achievements.length} badges débloqués
             </h2>
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-extrabold">
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-semibold">
               <span className="inline-flex items-center gap-1 rounded-xl bg-[#EEF2FF] px-3 py-1 text-[#4338CA]">
                 <Gem className="h-3.5 w-3.5 fill-[#6366F1]" /> {gamification.gems} gemmes
               </span>
@@ -97,7 +97,7 @@ export function TrophiesAndShopView({
               playTapSound(soundEnabled);
               onEquipAccessory(null);
             }}
-            className="cursor-pointer rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs font-extrabold text-[#64748B] hover:text-[#1E293B]"
+            className="cursor-pointer rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#64748B] hover:text-[#1E293B]"
           >
             Retirer l&apos;accessoire de Bit
           </button>
@@ -107,7 +107,7 @@ export function TrophiesAndShopView({
       {notice && (
         <div
           role="status"
-          className={`rounded-2xl border-2 px-4 py-3 text-sm font-extrabold ${
+          className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
             notice.ok
               ? "border-[#A7F3D0] bg-[#D1FAE5] text-[#047857]"
               : "border-[#FECDD3] bg-[#FFE4E6] text-[#E11D48]"
@@ -121,7 +121,7 @@ export function TrophiesAndShopView({
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <ShoppingBag className="h-5 w-5 text-[#6366F1]" />
-          <h3 className="text-lg font-black text-[#1E293B]">Boutique Gemmes</h3>
+          <h3 className="text-lg font-bold text-[#1E293B]">Boutique Gemmes</h3>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {STUDIO_SHOP_ITEMS.map((item) => {
@@ -135,15 +135,15 @@ export function TrophiesAndShopView({
             return (
               <div
                 key={item.id}
-                className="flex flex-col justify-between rounded-3xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm"
+                className="flex flex-col justify-between rounded-3xl border border-[#E2E8F0] bg-white p-5 shadow-sm"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-lg bg-[#EEF2FF] px-2.5 py-0.5 text-[11px] font-black text-[#4338CA]">
+                    <span className="rounded-lg bg-[#EEF2FF] px-2.5 py-0.5 text-[11px] font-bold text-[#4338CA]">
                       {item.badge}
                     </span>
                     {!owned && (
-                      <span className="inline-flex items-center gap-1 text-xs font-black text-[#4338CA]">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-[#4338CA]">
                         <Gem className="h-3.5 w-3.5 fill-[#6366F1]" /> {item.costGems}
                       </span>
                     )}
@@ -159,7 +159,7 @@ export function TrophiesAndShopView({
                     </div>
                   )}
 
-                  <h4 className="text-base font-black text-[#1E293B]">{item.name}</h4>
+                  <h4 className="text-base font-bold text-[#1E293B]">{item.name}</h4>
                   <p className="text-xs leading-5 text-[#64748B]">{item.description}</p>
                 </div>
 
@@ -200,7 +200,7 @@ export function TrophiesAndShopView({
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-[#FBBF24]" />
-          <h3 className="text-lg font-black text-[#1E293B]">Succès & Trophées</h3>
+          <h3 className="text-lg font-bold text-[#1E293B]">Succès & Trophées</h3>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {achievements.map((ach) => {
@@ -208,7 +208,7 @@ export function TrophiesAndShopView({
             return (
               <div
                 key={ach.id}
-                className={`rounded-2xl border-2 p-4 transition-colors ${
+                className={`rounded-2xl border p-4 transition-colors ${
                   ach.unlocked ? TIER_STYLES[ach.tier] : "border-[#E2E8F0] bg-white"
                 }`}
               >
@@ -222,11 +222,11 @@ export function TrophiesAndShopView({
                       <Award className="h-5 w-5" />
                     </span>
                     <div>
-                      <p className="text-sm font-black text-[#1E293B]">{ach.title}</p>
+                      <p className="text-sm font-bold text-[#1E293B]">{ach.title}</p>
                       <p className="text-xs font-medium text-[#64748B]">{ach.description}</p>
                     </div>
                   </div>
-                  <span className="shrink-0 text-xs font-black text-[#334155]">
+                  <span className="shrink-0 text-xs font-bold text-[#334155]">
                     {ach.current}/{ach.target}
                   </span>
                 </div>

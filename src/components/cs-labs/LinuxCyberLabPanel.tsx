@@ -12,6 +12,7 @@ import { TactileButton } from "@/components/daily-mission/studio/StudioPrimitive
 import { speakEnglish } from "@/components/daily-mission/studio/sound-effects";
 
 interface LinuxCyberLabPanelProps {
+  initialSubTab?: "linux" | "soc";
   linuxSolvedIds: readonly string[];
   socSolvedIds: readonly string[];
   onLinuxSolved: (id: string) => void;
@@ -25,13 +26,17 @@ interface LogEntry {
 }
 
 export function LinuxCyberLabPanel({
+  initialSubTab = "linux",
   linuxSolvedIds,
   socSolvedIds,
   onLinuxSolved,
   onSocSolved,
 }: LinuxCyberLabPanelProps) {
-  const [subTab, setSubTab] = useState<"linux" | "soc">("linux");
-  const [missionIdx, setMissionIdx] = useState(0);
+  const [subTab, setSubTab] = useState<"linux" | "soc">(initialSubTab);
+  // Open on the first unsolved mission so "Reprendre" lands on the next step.
+  const [missionIdx, setMissionIdx] = useState(() =>
+    Math.max(0, LINUX_MISSIONS.findIndex((mission) => !linuxSolvedIds.includes(mission.id))),
+  );
   const activeMission = LINUX_MISSIONS[missionIdx];
 
   const [osState, setOsState] = useState<VirtualOsState>(activeMission.initialState);
@@ -72,9 +77,9 @@ export function LinuxCyberLabPanel({
         <button
           type="button"
           onClick={() => setSubTab("linux")}
-          className={`inline-flex cursor-pointer items-center gap-2 rounded-2xl border-2 px-4 py-2 text-xs font-black uppercase tracking-wider ${
+          className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium ${
             subTab === "linux"
-              ? "border-[#7E22CE] bg-[#A855F7] text-white"
+              ? "border-[#059669] bg-[#ECFDF5] text-[#047857]"
               : "border-[#E2E8F0] bg-white text-[#475569] hover:bg-[#F8FAFC]"
           }`}
         >
@@ -84,9 +89,9 @@ export function LinuxCyberLabPanel({
         <button
           type="button"
           onClick={() => setSubTab("soc")}
-          className={`inline-flex cursor-pointer items-center gap-2 rounded-2xl border-2 px-4 py-2 text-xs font-black uppercase tracking-wider ${
+          className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium ${
             subTab === "soc"
-              ? "border-[#7E22CE] bg-[#A855F7] text-white"
+              ? "border-[#059669] bg-[#ECFDF5] text-[#047857]"
               : "border-[#E2E8F0] bg-white text-[#475569] hover:bg-[#F8FAFC]"
           }`}
         >
@@ -108,14 +113,14 @@ export function LinuxCyberLabPanel({
                   key={m.id}
                   type="button"
                   onClick={() => selectMission(idx)}
-                  className={`flex w-full cursor-pointer items-start justify-between gap-2 rounded-2xl border-2 p-3.5 text-left transition-all ${
+                  className={`flex w-full cursor-pointer items-start justify-between gap-2 rounded-2xl border p-3.5 text-left transition-all ${
                     selected
-                      ? "border-[#A855F7] bg-[#FAF5FF] shadow-[0_3px_0_#A855F7]"
+                      ? "border-[#A855F7] bg-[#FAF5FF]"
                       : "border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
                   }`}
                 >
                   <div>
-                    <p className="text-xs font-black text-[#1E293B]">{m.title}</p>
+                    <p className="text-xs font-bold text-[#1E293B]">{m.title}</p>
                     <p className="mt-0.5 text-[11px] font-semibold text-[#64748B]">{m.ueTag}</p>
                   </div>
                   {done && <CheckCircle2 className="h-4 w-4 shrink-0 text-[#059669]" />}
@@ -125,13 +130,13 @@ export function LinuxCyberLabPanel({
           </div>
 
           {/* Active Mission Terminal */}
-          <div className="space-y-4 rounded-3xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm">
+          <div className="space-y-4 rounded-3xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <span className="rounded-lg bg-[#F3E8FF] px-2.5 py-0.5 text-[11px] font-black text-[#7E22CE]">
+                <span className="rounded-lg bg-[#F3E8FF] px-2.5 py-0.5 text-[11px] font-bold text-[#7E22CE]">
                   {activeMission.ueTag} · Sandbox 100 % simulée
                 </span>
-                <h3 className="mt-1 text-lg font-black text-[#1E293B]">{activeMission.title}</h3>
+                <h3 className="mt-1 text-lg font-bold text-[#1E293B]">{activeMission.title}</h3>
                 <p className="mt-1 text-sm text-[#475569]">{activeMission.briefing}</p>
               </div>
               <button
@@ -144,14 +149,14 @@ export function LinuxCyberLabPanel({
             </div>
 
             {missionSolved && (
-              <div className="flex items-center gap-2 rounded-2xl border-2 border-[#A7F3D0] bg-[#D1FAE5] px-4 py-3 text-sm font-extrabold text-[#047857]">
+              <div className="flex items-center gap-2 rounded-2xl border border-[#A7F3D0] bg-[#D1FAE5] px-4 py-3 text-sm font-semibold text-[#047857]">
                 <CheckCircle2 className="h-5 w-5 shrink-0" />
                 <span>{activeMission.successSummary}</span>
               </div>
             )}
 
             {/* Terminal Window */}
-            <div className="overflow-hidden rounded-2xl border-2 border-[#1E293B] bg-[#0F172A] text-[#E2E8F0]">
+            <div className="overflow-hidden rounded-2xl border border-[#1E293B] bg-[#0F172A] text-[#E2E8F0]">
               <div className="flex items-center justify-between border-b border-[#1E293B] bg-[#1E293B] px-4 py-2 text-[11px] font-mono text-[#94A3B8]">
                 <span>apprentice@{osState.hostname}:~ (sandbox mémoire)</span>
                 <span>Tapez &quot;help&quot; pour la liste</span>
@@ -203,7 +208,7 @@ export function LinuxCyberLabPanel({
 
             {/* Quick command chips */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase text-[#94A3B8]">
+              <span className="text-[11px] font-semibold uppercase text-[#94A3B8]">
                 Commandes rapides :
               </span>
               {activeMission.suggestedCommands.map((cmd) => (
@@ -228,20 +233,20 @@ export function LinuxCyberLabPanel({
             const picked = socAnswers[item.id];
             const isRight = picked === item.correctAnswer;
             return (
-              <div key={item.id} className="rounded-3xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm space-y-4">
+              <div key={item.id} className="rounded-3xl border border-[#E2E8F0] bg-white p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-lg bg-[#F3E8FF] px-2.5 py-0.5 text-[11px] font-black text-[#7E22CE]">
+                  <span className="rounded-lg bg-[#F3E8FF] px-2.5 py-0.5 text-[11px] font-bold text-[#7E22CE]">
                     {item.ueTag}
                   </span>
-                  <span className="rounded-lg bg-[#FFE4E6] px-2.5 py-0.5 text-[11px] font-black text-[#E11D48]">
+                  <span className="rounded-lg bg-[#FFE4E6] px-2.5 py-0.5 text-[11px] font-bold text-[#E11D48]">
                     Sévérité : {item.severity}
                   </span>
                 </div>
 
-                <h3 className="text-base font-black text-[#1E293B]">{item.title}</h3>
+                <h3 className="text-base font-bold text-[#1E293B]">{item.title}</h3>
 
                 <div className="rounded-2xl bg-[#0F172A] p-3.5">
-                  <p className="mb-1.5 text-[10px] font-black uppercase tracking-wider text-[#94A3B8]">
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
                     {item.artifactTitle}
                   </p>
                   <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs text-[#E2E8F0]">
@@ -249,7 +254,7 @@ export function LinuxCyberLabPanel({
                   </pre>
                 </div>
 
-                <p className="text-sm font-extrabold text-[#1E293B]">{item.question}</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{item.question}</p>
 
                 <div className="space-y-2">
                   {item.choices.map((choice) => {
@@ -264,7 +269,7 @@ export function LinuxCyberLabPanel({
                           setSocAnswers((prev) => ({ ...prev, [item.id]: choice }));
                           if (choice === item.correctAnswer) onSocSolved(item.id);
                         }}
-                        className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-2xl border-2 px-3.5 py-3 text-left text-xs font-extrabold transition-all ${
+                        className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-2xl border px-3.5 py-3 text-left text-xs font-semibold transition-all ${
                           right
                             ? "border-[#059669] bg-[#D1FAE5] text-[#047857]"
                             : wrong
@@ -288,7 +293,7 @@ export function LinuxCyberLabPanel({
                     {isRight && (
                       <div className="flex items-center justify-between gap-2 rounded-xl border border-[#C7D2FE] bg-[#EEF2FF] px-3 py-2">
                         <p className="font-semibold text-[#312E81]">
-                          <strong className="font-black">En anglais pro :</strong> “{item.englishReportLine}”
+                          <strong className="font-bold">En anglais pro :</strong> “{item.englishReportLine}”
                         </p>
                         <button
                           type="button"

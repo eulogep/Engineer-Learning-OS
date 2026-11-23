@@ -160,20 +160,20 @@ export function SpeedBlitzGame({
 
   if (phase === "ready") {
     return (
-      <div className="elos-studio rounded-3xl border-2 border-[#E2E8F0] bg-white px-6 py-10 text-center shadow-sm sm:px-10">
+      <div className="elos-studio rounded-3xl border border-[#E2E8F0] bg-white px-6 py-10 text-center shadow-sm sm:px-10">
         <div className="mx-auto max-w-md space-y-6">
           <VoltMascot mood="hero" size={120} accessory={equippedAccessory} />
           <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#FFEDD5] px-3 py-1 text-xs font-black uppercase text-[#C2410C]">
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#FFEDD5] px-3 py-1 text-xs font-bold uppercase text-[#C2410C]">
               <Timer className="h-4 w-4" /> Défi Chrono 60 secondes
             </span>
-            <h2 className="text-2xl font-black text-[#1E293B]">Match Éclair · 240 termes</h2>
+            <h2 className="text-2xl font-bold text-[#1E293B]">Match Éclair · 240 termes</h2>
             <p className="text-sm font-medium text-[#64748B]">
               Enchaîne un maximum de traductions en 60 secondes. Touches clavier 1 à 4 actives pour aller encore plus vite !
             </p>
           </div>
           {bestScore > 0 && (
-            <p className="inline-flex items-center gap-1.5 rounded-xl bg-[#EEF2FF] px-3.5 py-1.5 text-xs font-black text-[#4338CA]">
+            <p className="inline-flex items-center gap-1.5 rounded-xl bg-[#EEF2FF] px-3.5 py-1.5 text-xs font-bold text-[#4338CA]">
               <Trophy className="h-4 w-4 text-[#FBBF24]" /> Record personnel : {bestScore} réponses
             </p>
           )}
@@ -193,7 +193,7 @@ export function SpeedBlitzGame({
 
   if (phase === "done" && result) {
     return (
-      <div className="elos-studio relative overflow-hidden rounded-3xl border-2 border-[#E2E8F0] bg-white px-6 py-10 text-center shadow-sm sm:px-10">
+      <div className="elos-studio relative overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white px-6 py-10 text-center shadow-sm sm:px-10">
         <ConfettiBurst />
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -203,23 +203,23 @@ export function SpeedBlitzGame({
           <VoltMascot mood="celebrating" size={124} accessory={equippedAccessory} />
           <div className="space-y-1">
             {result.isNewBest && (
-              <span className="inline-block rounded-xl bg-[#FFEDD5] px-3 py-1 text-xs font-black uppercase text-[#C2410C]">
+              <span className="inline-block rounded-xl bg-[#FFEDD5] px-3 py-1 text-xs font-bold uppercase text-[#C2410C]">
                 🏆 Nouveau record personnel !
               </span>
             )}
-            <h2 className="text-3xl font-black text-[#1E293B]">{score} bonnes réponses</h2>
+            <h2 className="text-3xl font-bold text-[#1E293B]">{score} bonnes réponses</h2>
             <p className="text-sm font-semibold text-[#64748B]">Meilleur combo : {bestCombo} d&apos;affilée</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border-2 border-[#FBBF24] bg-[#FFEDD5]/60 p-3.5">
-              <p className="text-[11px] font-black uppercase text-[#C2410C]">XP gagnés</p>
-              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-black text-[#C2410C]">
+            <div className="rounded-2xl border border-[#FBBF24] bg-[#FFEDD5]/60 p-3.5">
+              <p className="text-[11px] font-bold uppercase text-[#C2410C]">XP gagnés</p>
+              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-bold text-[#C2410C]">
                 <Zap className="h-5 w-5 fill-[#FBBF24] text-[#D97706]" />+{result.xpEarned}
               </p>
             </div>
-            <div className="rounded-2xl border-2 border-[#6366F1] bg-[#E0E7FF]/60 p-3.5">
-              <p className="text-[11px] font-black uppercase text-[#4338CA]">Gemmes</p>
-              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-black text-[#4338CA]">
+            <div className="rounded-2xl border border-[#6366F1] bg-[#E0E7FF]/60 p-3.5">
+              <p className="text-[11px] font-bold uppercase text-[#4338CA]">Gemmes</p>
+              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-bold text-[#4338CA]">
                 <Gem className="h-5 w-5 fill-[#6366F1]" />+{result.gemsEarned}
               </p>
             </div>
@@ -243,7 +243,7 @@ export function SpeedBlitzGame({
 
   return (
     <div
-      className={`elos-studio overflow-hidden rounded-3xl border-2 bg-white shadow-sm transition-colors ${
+      className={`elos-studio overflow-hidden rounded-3xl border bg-white shadow-sm transition-colors ${
         flash === "good"
           ? "border-[#059669]"
           : flash === "bad"
@@ -252,7 +252,7 @@ export function SpeedBlitzGame({
       }`}
     >
       {/* Top HUD */}
-      <div className="flex items-center gap-3 border-b-2 border-[#E2E8F0] px-5 py-4">
+      <div className="flex items-center gap-3 border-b border-[#E2E8F0] px-5 py-4">
         <button
           type="button"
           onClick={onExit}
@@ -274,7 +274,7 @@ export function SpeedBlitzGame({
         </div>
 
         <span
-          className={`inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-sm font-black tabular-nums ${
+          className={`inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-sm font-bold tabular-nums ${
             urgent ? "bg-[#FFE4E6] text-[#E11D48]" : "bg-[#FFEDD5] text-[#C2410C]"
           }`}
         >
@@ -282,12 +282,12 @@ export function SpeedBlitzGame({
           {timeLeft}s
         </span>
 
-        <span className="inline-flex items-center gap-1 rounded-xl bg-[#D1FAE5] px-3 py-1.5 text-sm font-black text-[#047857]">
+        <span className="inline-flex items-center gap-1 rounded-xl bg-[#D1FAE5] px-3 py-1.5 text-sm font-bold text-[#047857]">
           ✓ {score}
         </span>
 
         {combo >= 2 && (
-          <span className="hidden items-center gap-1 rounded-xl bg-[#EEF2FF] px-2.5 py-1.5 text-xs font-black text-[#4338CA] sm:inline-flex">
+          <span className="hidden items-center gap-1 rounded-xl bg-[#EEF2FF] px-2.5 py-1.5 text-xs font-bold text-[#4338CA] sm:inline-flex">
             <Flame className="h-4 w-4 fill-[#F97316] text-[#F97316]" />×{combo}
           </span>
         )}
@@ -295,18 +295,18 @@ export function SpeedBlitzGame({
 
       {/* Prompt + 4 fast cards */}
       <div className="mx-auto max-w-2xl space-y-6 px-5 py-8 sm:px-8">
-        <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center">
-          <p className="text-xs font-black uppercase tracking-wider text-[#6366F1]">
+        <div className="flex flex-col items-center gap-3 rounded-3xl border border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#6366F1]">
             {question.direction === "en_to_fr" ? "Anglais → Français" : "Français → Anglais"} ·{" "}
             {question.word.packLabel}
           </p>
           <div className="flex items-center gap-3">
-            <h3 className="text-2xl font-black text-[#1E293B] sm:text-3xl">{question.prompt}</h3>
+            <h3 className="text-2xl font-bold text-[#1E293B] sm:text-3xl">{question.prompt}</h3>
             {question.direction === "en_to_fr" && (
               <button
                 type="button"
                 onClick={() => speakEnglish(question.word.word)}
-                className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white shadow-[0_3px_0_#4338CA]"
+                className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white"
                 aria-label={`Écouter ${question.word.word}`}
               >
                 <Volume2 className="h-5 w-5" />
@@ -321,9 +321,9 @@ export function SpeedBlitzGame({
               key={choice}
               type="button"
               onClick={() => answerChoice(choice)}
-              className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-white px-4 py-4 text-left text-sm font-extrabold text-[#1E293B] shadow-[0_4px_0_#E2E8F0] transition-all hover:border-[#6366F1] hover:bg-[#EEF2FF]/50 active:translate-y-[3px] active:shadow-none"
+              className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#E2E8F0] bg-white px-4 py-4 text-left text-sm font-semibold text-[#1E293B] transition-all hover:border-[#6366F1] hover:bg-[#EEF2FF]/50 active:translate-y-[3px] active:shadow-none"
             >
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 border-[#E2E8F0] text-xs font-black text-[#94A3B8]">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[#E2E8F0] text-xs font-bold text-[#94A3B8]">
                 {idx + 1}
               </span>
               <span>{choice}</span>

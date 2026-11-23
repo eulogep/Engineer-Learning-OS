@@ -12,6 +12,7 @@ import {
 import { TactileButton } from "@/components/daily-mission/studio/StudioPrimitives";
 
 interface SqlAlgoLabPanelProps {
+  initialSubTab?: "sql" | "drills";
   sqlSolvedIds: readonly string[];
   drillSolvedIds: readonly string[];
   onSqlSolved: (id: string) => void;
@@ -27,13 +28,16 @@ const DRILL_FILTERS: readonly ("Toutes" | CsDrillCategory)[] = [
 ];
 
 export function SqlAlgoLabPanel({
+  initialSubTab = "sql",
   sqlSolvedIds,
   drillSolvedIds,
   onSqlSolved,
   onDrillSolved,
 }: SqlAlgoLabPanelProps) {
-  const [subTab, setSubTab] = useState<"sql" | "drills">("sql");
-  const [sqlIdx, setSqlIdx] = useState(0);
+  const [subTab, setSubTab] = useState<"sql" | "drills">(initialSubTab);
+  const [sqlIdx, setSqlIdx] = useState(() =>
+    Math.max(0, SQL_CHALLENGES.findIndex((challenge) => !sqlSolvedIds.includes(challenge.id))),
+  );
   const [sqlInput, setSqlInput] = useState("");
   const [sqlEval, setSqlEval] = useState<ReturnType<typeof evaluateSqlQuery> | null>(null);
 
@@ -58,9 +62,9 @@ export function SqlAlgoLabPanel({
         <button
           type="button"
           onClick={() => setSubTab("sql")}
-          className={`inline-flex cursor-pointer items-center gap-2 rounded-2xl border-2 px-4 py-2 text-xs font-black uppercase tracking-wider ${
+          className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium ${
             subTab === "sql"
-              ? "border-[#0E7490] bg-[#06B6D4] text-white"
+              ? "border-[#059669] bg-[#ECFDF5] text-[#047857]"
               : "border-[#E2E8F0] bg-white text-[#475569] hover:bg-[#F8FAFC]"
           }`}
         >
@@ -70,9 +74,9 @@ export function SqlAlgoLabPanel({
         <button
           type="button"
           onClick={() => setSubTab("drills")}
-          className={`inline-flex cursor-pointer items-center gap-2 rounded-2xl border-2 px-4 py-2 text-xs font-black uppercase tracking-wider ${
+          className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium ${
             subTab === "drills"
-              ? "border-[#0E7490] bg-[#06B6D4] text-white"
+              ? "border-[#059669] bg-[#ECFDF5] text-[#047857]"
               : "border-[#E2E8F0] bg-white text-[#475569] hover:bg-[#F8FAFC]"
           }`}
         >
@@ -86,8 +90,8 @@ export function SqlAlgoLabPanel({
         <div className="space-y-5">
           {/* Synthetic Tables Preview */}
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border-2 border-[#E2E8F0] bg-white p-4">
-              <p className="mb-2 font-mono text-xs font-black text-[#0E7490]">
+            <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+              <p className="mb-2 font-mono text-xs font-bold text-[#0E7490]">
                 Table : servers(id, hostname, zone, state)
               </p>
               <table className="w-full text-left font-mono text-[11px]">
@@ -111,8 +115,8 @@ export function SqlAlgoLabPanel({
               </table>
             </div>
 
-            <div className="rounded-2xl border-2 border-[#E2E8F0] bg-white p-4">
-              <p className="mb-2 font-mono text-xs font-black text-[#0E7490]">
+            <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+              <p className="mb-2 font-mono text-xs font-bold text-[#0E7490]">
                 Table : incidents(id, server_id, severity, created_at, status)
               </p>
               <table className="w-full text-left font-mono text-[11px]">
@@ -148,14 +152,14 @@ export function SqlAlgoLabPanel({
                     key={item.id}
                     type="button"
                     onClick={() => switchSql(idx)}
-                    className={`flex w-full cursor-pointer items-start justify-between gap-2 rounded-2xl border-2 p-3.5 text-left ${
+                    className={`flex w-full cursor-pointer items-start justify-between gap-2 rounded-2xl border p-3.5 text-left ${
                       idx === sqlIdx
-                        ? "border-[#06B6D4] bg-[#ECFEFF] shadow-[0_3px_0_#06B6D4]"
+                        ? "border-[#06B6D4] bg-[#ECFEFF]"
                         : "border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
                     }`}
                   >
                     <div>
-                      <p className="text-xs font-black text-[#1E293B]">{item.title}</p>
+                      <p className="text-xs font-bold text-[#1E293B]">{item.title}</p>
                       <p className="mt-0.5 text-[11px] font-semibold text-[#64748B]">{item.ueTag}</p>
                     </div>
                     {done && <CheckCircle2 className="h-4 w-4 shrink-0 text-[#059669]" />}
@@ -164,12 +168,12 @@ export function SqlAlgoLabPanel({
               })}
             </div>
 
-            <div className="rounded-3xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm space-y-4">
+            <div className="rounded-3xl border border-[#E2E8F0] bg-white p-5 shadow-sm space-y-4">
               <div>
-                <span className="rounded-lg bg-[#CFFAFE] px-2.5 py-0.5 text-[11px] font-black text-[#0E7490]">
+                <span className="rounded-lg bg-[#CFFAFE] px-2.5 py-0.5 text-[11px] font-bold text-[#0E7490]">
                   {activeSql.ueTag}
                 </span>
-                <h3 className="mt-1 text-lg font-black text-[#1E293B]">{activeSql.title}</h3>
+                <h3 className="mt-1 text-lg font-bold text-[#1E293B]">{activeSql.title}</h3>
                 <p className="mt-1 text-sm font-medium text-[#475569]">{activeSql.prompt}</p>
               </div>
 
@@ -182,7 +186,7 @@ export function SqlAlgoLabPanel({
                     onClick={() =>
                       setSqlInput((prev) => (prev.trim() ? `${prev.trim()} ${chip}` : chip))
                     }
-                    className="cursor-pointer rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5 font-mono text-xs font-bold text-[#1E293B] hover:border-[#06B6D4] hover:bg-[#ECFEFF]"
+                    className="cursor-pointer rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5 font-mono text-xs font-bold text-[#1E293B] hover:border-[#06B6D4] hover:bg-[#ECFEFF]"
                   >
                     + {chip}
                   </button>
@@ -193,7 +197,7 @@ export function SqlAlgoLabPanel({
                 value={sqlInput}
                 onChange={(e) => setSqlInput(e.target.value)}
                 placeholder="Écris ta requête SQL ou clique sur les blocs ci-dessus…"
-                className="min-h-[104px] w-full rounded-2xl border-2 border-[#CBD5E1] bg-[#0F172A] p-4 font-mono text-xs text-[#34D399] outline-none focus:border-[#06B6D4]"
+                className="min-h-[104px] w-full rounded-2xl border border-[#CBD5E1] bg-[#0F172A] p-4 font-mono text-xs text-[#34D399] outline-none focus:border-[#06B6D4]"
               />
 
               <div className="flex flex-wrap items-center gap-3">
@@ -222,23 +226,23 @@ export function SqlAlgoLabPanel({
 
               {sqlEval && (
                 <div
-                  className={`rounded-2xl border-2 p-4 text-xs space-y-3 ${
+                  className={`rounded-2xl border p-4 text-xs space-y-3 ${
                     sqlEval.correct
                       ? "border-[#A7F3D0] bg-[#D1FAE5]/60 text-[#047857]"
                       : "border-[#FECDD3] bg-[#FFE4E6]/70 text-[#E11D48]"
                   }`}
                 >
-                  <p className="font-extrabold">{sqlEval.feedback}</p>
+                  <p className="font-semibold">{sqlEval.feedback}</p>
                   {sqlEval.correct && (
                     <div className="rounded-xl bg-white p-3 text-[#1E293B]">
-                      <p className="mb-1.5 text-[10px] font-black uppercase text-[#64748B]">
+                      <p className="mb-1.5 text-[10px] font-bold uppercase text-[#64748B]">
                         Aperçu du résultat attendu
                       </p>
                       <table className="w-full text-left font-mono text-xs">
                         <thead>
                           <tr className="border-b border-[#E2E8F0]">
                             {activeSql.expectedPreviewColumns.map((col) => (
-                              <th key={col} className="py-1 font-black">{col}</th>
+                              <th key={col} className="py-1 font-bold">{col}</th>
                             ))}
                           </tr>
                         </thead>
@@ -270,7 +274,7 @@ export function SqlAlgoLabPanel({
                 key={cat}
                 type="button"
                 onClick={() => setDrillFilter(cat)}
-                className={`cursor-pointer rounded-xl border-2 px-3 py-1.5 text-xs font-extrabold ${
+                className={`cursor-pointer rounded-xl border px-3 py-1.5 text-xs font-semibold ${
                   drillFilter === cat
                     ? "border-[#06B6D4] bg-[#ECFEFF] text-[#0E7490]"
                     : "border-[#E2E8F0] bg-white text-[#64748B]"
@@ -286,22 +290,22 @@ export function SqlAlgoLabPanel({
               const picked = drillAnswers[q.id];
               const isRight = picked === q.correctAnswer;
               return (
-                <div key={q.id} className="rounded-3xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm space-y-3.5">
+                <div key={q.id} className="rounded-3xl border border-[#E2E8F0] bg-white p-5 shadow-sm space-y-3.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-lg bg-[#ECFEFF] px-2.5 py-0.5 text-[11px] font-black text-[#0E7490]">
+                    <span className="rounded-lg bg-[#ECFEFF] px-2.5 py-0.5 text-[11px] font-bold text-[#0E7490]">
                       {q.ueTag}
                     </span>
                     {drillSolvedIds.includes(q.id) && (
                       <CheckCircle2 className="h-4 w-4 text-[#059669]" />
                     )}
                   </div>
-                  <h3 className="text-base font-black text-[#1E293B]">{q.title}</h3>
+                  <h3 className="text-base font-bold text-[#1E293B]">{q.title}</h3>
                   {q.snippet && (
                     <pre className="overflow-x-auto whitespace-pre-wrap rounded-2xl bg-[#0F172A] p-3.5 font-mono text-xs text-[#E2E8F0]">
                       {q.snippet}
                     </pre>
                   )}
-                  <p className="text-sm font-extrabold text-[#334155]">{q.question}</p>
+                  <p className="text-sm font-semibold text-[#334155]">{q.question}</p>
                   <div className="space-y-2">
                     {q.choices.map((choice) => {
                       const selected = picked === choice;
@@ -315,7 +319,7 @@ export function SqlAlgoLabPanel({
                             setDrillAnswers((prev) => ({ ...prev, [q.id]: choice }));
                             if (choice === q.correctAnswer) onDrillSolved(q.id);
                           }}
-                          className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-2xl border-2 px-3.5 py-3 text-left text-xs font-extrabold transition-all ${
+                          className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-2xl border px-3.5 py-3 text-left text-xs font-semibold transition-all ${
                             right
                               ? "border-[#059669] bg-[#D1FAE5] text-[#047857]"
                               : wrong
