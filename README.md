@@ -108,9 +108,20 @@ Traditional e-learning platforms rely on **passive video watching**, **superfici
 - **Programme import with quality audit:** a pedagogical base export (courses, exercises, flashcards) becomes a course map; an automatic audit blocks guessable multiple-choice banks (correct answer always the longest, generic distractors) and copy-pasted flashcards.
 - **Offline:** a service worker keeps the app usable without a network.
 
-### 🗣️ 8. Daily English Mission (`daily-english`) — `/daily-english`
-- **150 words in 5 packs** (core, networking, cybersecurity, meetings, career) with Leitner spaced review and a daily mission.
+### 🗣️ 8. Daily English Studio (`daily-english`) — `/daily-english`
+- **240 terms in 8 packs:** the original 150 words in 5 packs (core, networking, cybersecurity, meetings, career) plus 90 bonus terms (Cloud & DevOps, Data/SQL & APIs, Code Review & Architecture), with Leitner spaced review and a daily mission.
+- **Gamified learning path:** themed units of interactive lessons (translation choice, listening, fill-in-the-blank, spot the error, word bank, match pairs, typed answers) with stars, XP, streak, hearts, gems and daily quests. Quest rewards can be claimed once per day. The engine is pure and local-first.
+- **Practice hub:** a timed **Speed Blitz** mode, **6 professional stories** with French hints, and **16 French-speaker grammar traps**.
+- **Trophies & shop:** achievements, plus a gem shop with mascot accessories.
 - **Hand-written professional roleplays** (stand-up, incident report, apprenticeship interview) evaluated locally, plus on-device Whisper transcription and a full local backup / restore.
+- **Accessible:** keyboard shortcuts, `aria-live` feedback, and animations that respect `prefers-reduced-motion`.
+
+### 🧪 9. CS Engineering Labs (`cs-labs`) — `/learn/cs-labs`
+Interactive simulators aligned with a French L3 / Licence Pro computer science curriculum. They run 100% in the browser, with synthetic content and progress saved locally.
+- **Networking:** CIDR/VLSM subnetting, longest-prefix-match routing challenges, and protocol sequences to put in order (encapsulation, TCP handshake, DHCP DORA, DNS → TLS).
+- **Linux & cyber SOC:** a virtual shell sandbox with Linux missions. Its pure, deterministic evaluator never touches the host. It also includes SOC alert triage cases with ACLs.
+- **SQL, graphs & OS:** SQL challenges with normalization (3NF) and algorithm and operating system drills.
+- **SAE scenarios:** 4 end-to-end project cases: a DHCP/VLAN outage, Linux hardening, SQL/API latency, and an OWASP security review of a pull request.
 
 ---
 
@@ -171,7 +182,8 @@ flowchart TD
         Evidence["/evidence (Audit Trail)"]
         Progress["/progress (Competency Matrix)"]
         Studio["/studio (Learning Studio)"]
-        English["/daily-english (Missions & Roleplays)"]
+        English["/daily-english (Gamified Studio & Roleplays)"]
+        Labs["/learn/cs-labs (CS Engineering Labs)"]
     end
 
     subgraph Agent ["🤖 Local Agent Bridge"]
@@ -192,6 +204,8 @@ flowchart TD
         SP["scientific-pedagogy\n(Evidence-Informed Policy)"]
         LS["learning-studio\n(Cited Answers, Exams, Programme Audit)"]
         SN["learner-snapshot\n(Agent Bridge & Coach)"]
+        DEN["daily-english\n(Gamification & Exercise Generator)"]
+        CL["cs-labs\n(Network, Linux, SQL & SAE Simulators)"]
     end
 
     subgraph Infra ["🔌 Infrastructure & Local Storage"]
@@ -272,7 +286,8 @@ src/modules/
 ├── technical-english/        # Spoken/written technical English & audio evidence persistence
 ├── learning-studio/          # Source library, cited answers, OCR import, mock exams, programme audit, chapter practice
 ├── learner-snapshot/         # Agent snapshot, practice summary from the agent, morning & evening coach messages
-├── daily-english/            # 150-word vocabulary, Leitner review, roleplays, local correction, backup
+├── daily-english/            # 240-term vocabulary, Leitner review, gamification, exercise generator, stories, roleplays, backup
+├── cs-labs/                  # Pure simulators: CIDR/VLSM, Linux sandbox & SOC, SQL & algo drills, SAE scenarios
 ├── local-speech/             # On-device Whisper transcription & pronunciation feedback
 └── mission-runtime/          # Multi-step interactive mission runner & active time tracking
 ```
@@ -284,13 +299,14 @@ src/modules/
 | Route | View | Purpose |
 |---|---|---|
 | `/` | **Aujourd’hui** | Daily priority overview, active missions, and due reviews |
-| `/learn` | **Apprendre** | Learning path catalog (Excel Foundations, Technical English, Deep Mastery, Industrial Scenarios) |
+| `/learn` | **Apprendre** | Learning path catalog (Excel Foundations, Technical English, Deep Mastery, Industrial Scenarios, CS Labs) |
+| `/learn/cs-labs` | **Labs Ingénieur** | Networking, Linux/cyber, SQL/algo and SAE simulators (`?tab=networking\|linux\|sql\|sae`) |
 | `/subjects` | **Matières** | Multi-subject academic portal (Computer Networking INF3050 pilot) |
 | `/sources` | **Sources** | Canonical source catalog, license classifications, and provenance graph |
 | `/review` | **Réviser** | Spaced retrieval session tackling recorded error patterns |
 | `/evidence` | **Preuves** | Auditable chronological evidence stream of learner attempts |
 | `/progress` | **Progression** | Honest competency graph derived strictly from verified evidence |
-| `/daily-english` | **Daily English** | Daily interactive speaking and vocabulary practice |
+| `/daily-english` | **Daily English Studio** | Gamified learning path, lessons, daily quests, stories, Speed Blitz, trophies & shop |
 | `/daily-english/roleplay` | **Roleplays** | Professional English roleplays evaluated locally |
 | `/studio` | **Learning Studio** | Your own course files: cited answers, flashcards, quizzes, mock exams, audio overview |
 | `/data` | **Données** | Backup / restore and the local agent (Hermes) bridge with practice done on your phone |
