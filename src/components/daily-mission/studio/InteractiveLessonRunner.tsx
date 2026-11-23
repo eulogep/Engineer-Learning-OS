@@ -26,6 +26,7 @@ import {
   type LessonRewardSummary,
   type PathNode,
 } from "@/modules/daily-english/gamification";
+import type { MascotAccessoryId } from "@/modules/daily-english/studio-content";
 import { VoltMascot, type MascotMood } from "./VoltMascot";
 import { ConfettiBurst, GlossyProgressBar, TactileButton } from "./StudioPrimitives";
 import {
@@ -42,6 +43,7 @@ interface InteractiveLessonRunnerProps {
   exercises: readonly InteractiveExercise[];
   hearts: number;
   soundEnabled: boolean;
+  equippedAccessory?: MascotAccessoryId | null;
   onLoseHeart: () => void;
   onRefillHearts: () => void;
   onComplete: (result: {
@@ -70,6 +72,7 @@ export function InteractiveLessonRunner({
   exercises,
   hearts,
   soundEnabled,
+  equippedAccessory = null,
   onLoseHeart,
   onRefillHearts,
   onComplete,
@@ -92,6 +95,8 @@ export function InteractiveLessonRunner({
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [selectedTokenIndices, setSelectedTokenIndices] = useState<number[]>([]);
   const [showListeningHint, setShowListeningHint] = useState(false);
+  const [typedAnswer, setTypedAnswer] = useState("");
+  const [showTypeHint, setShowTypeHint] = useState(false);
 
   // Match-pairs state
   const [pickedEnglish, setPickedEnglish] = useState<string | null>(null);
@@ -114,6 +119,8 @@ export function InteractiveLessonRunner({
     setSelectedChoice(null);
     setSelectedTokenIndices([]);
     setShowListeningHint(false);
+    setTypedAnswer("");
+    setShowTypeHint(false);
     setPickedEnglish(null);
     setPickedFrench(null);
     setMatchedEnglish(new Set());
@@ -176,8 +183,16 @@ export function InteractiveLessonRunner({
     if (!current || feedback.status !== "idle") return false;
     if (current.kind === "word_bank") return selectedTokenIndices.length > 0;
     if (current.kind === "match_pairs") return matchedEnglish.size === current.pairs.length;
+    if (current.kind === "type_answer") return typedAnswer.trim().length > 0;
     return selectedChoice !== null;
-  }, [current, feedback.status, matchedEnglish.size, selectedChoice, selectedTokenIndices.length]);
+  }, [
+    current,
+    feedback.status,
+    matchedEnglish.size,
+    selectedChoice,
+    selectedTokenIndices.length,
+    typedAnswer,
+  ]);
 
   const handleCheck = useCallback(() => {
     if (!current || feedback.status !== "idle") return;
@@ -200,6 +215,19 @@ export function InteractiveLessonRunner({
       return;
     }
 
+    if (current.kind === "type_answer") {
+      const result = evaluateExerciseAnswer(current, typedAnswer);
+      if (result.correct) {
+        const detail = result.almostCorrect
+          ? `Presque parfait ! Orthographe exacte : « ${result.expected} » — “${current.example}”`
+          : `“${current.example}”`;
+        handleCorrectFeedback(detail);
+      } else {
+        handleIncorrectFeedback(result.expected, `“${current.example}”`);
+      }
+      return;
+    }
+
     if (!selectedChoice) return;
     const result = evaluateExerciseAnswer(current, selectedChoice);
     const detail =
@@ -207,7 +235,9 @@ export function InteractiveLessonRunner({
         ? `“${current.example}”`
         : current.kind === "listening_choice"
           ? `${current.speakText} — ${current.translationHint}`
-          : `${current.translationHint}`;
+          : current.kind === "spot_error"
+            ? `${current.explanation} (${current.mnemonic})`
+            : `${current.translationHint}`;
 
     if (result.correct) {
       handleCorrectFeedback(detail);
@@ -222,6 +252,7 @@ export function InteractiveLessonRunner({
     matchedEnglish.size,
     selectedChoice,
     selectedTokenIndices,
+    typedAnswer,
   ]);
 
   const handleContinue = useCallback(() => {
@@ -290,6 +321,9 @@ export function InteractiveLessonRunner({
     if (reward || !current) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      const targetTag = (event.target as HTMLElement | null)?.tagName;
+      const inInput = targetTag === "INPUT" || targetTag === "TEXTAREA";
+
       if (event.key === "Enter") {
         event.preventDefault();
         if (feedback.status !== "idle") {
@@ -299,6 +333,8 @@ export function InteractiveLessonRunner({
         }
         return;
       }
+      if (inInput) return;
+
       if (feedback.status === "idle" && current.kind === "word_bank" && event.key === "Backspace") {
         event.preventDefault();
         setSelectedTokenIndices((prev) => prev.slice(0, -1));
@@ -308,7 +344,8 @@ export function InteractiveLessonRunner({
         feedback.status === "idle" &&
         (current.kind === "translate_choice" ||
           current.kind === "listening_choice" ||
-          current.kind === "fill_blank")
+          current.kind === "fill_blank" ||
+          current.kind === "spot_error")
       ) {
         const num = Number(event.key);
         if (num >= 1 && num <= current.choices.length) {
@@ -341,7 +378,7 @@ export function InteractiveLessonRunner({
           transition={{ type: "spring", stiffness: 240, damping: 20 }}
           className="relative mx-auto max-w-md space-y-6"
         >
-          <VoltMascot mood="celebrating" size={136} />
+          <VoltMascot mood="celebrating" size={136} accessory={equippedAccessory} />
           <div className="space-y-1">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#047857]">
               Leçon terminée !
@@ -374,8 +411,13 @@ export function InteractiveLessonRunner({
             </div>
           </div>
 
-          {(reward.comboBonus > 0 || reward.perfectBonus > 0) && (
+          {(reward.comboBonus > 0 || reward.perfectBonus > 0 || reward.boosted) && (
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-extrabold">
+              {reward.boosted && (
+                <span className="rounded-xl bg-[#EEF2FF] px-3 py-1 text-[#4338CA]">
+                  ⚡ Boost XP ×2 appliqué !
+                </span>
+              )}
               {reward.comboBonus > 0 && (
                 <span className="rounded-xl bg-[#FFEDD5] px-3 py-1 text-[#C2410C]">
                   🔥 Bonus combo +{reward.comboBonus} XP (max {maxCombo})
@@ -512,7 +554,7 @@ export function InteractiveLessonRunner({
             {current.kind === "translate_choice" && (
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <VoltMascot mood={mascotMood} size={76} />
+                  <VoltMascot mood={mascotMood} size={76} accessory={equippedAccessory} />
                   <div className="flex flex-1 flex-wrap items-center gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/60 px-4 py-3.5">
                     <button
                       type="button"
@@ -648,7 +690,7 @@ export function InteractiveLessonRunner({
             {current.kind === "word_bank" && (
               <div className="space-y-5">
                 <div className="flex items-center gap-4">
-                  <VoltMascot mood={mascotMood} size={72} />
+                  <VoltMascot mood={mascotMood} size={72} accessory={equippedAccessory} />
                   <div className="flex flex-1 items-center justify-between gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/60 px-4 py-3">
                     <div>
                       <p className="text-xs font-black uppercase tracking-wider text-[#6366F1]">
@@ -865,6 +907,125 @@ export function InteractiveLessonRunner({
                       >
                         {french}
                       </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* 6. TYPE ANSWER (Active recall & audio dictation) */}
+            {current.kind === "type_answer" && (
+              <div className="space-y-5">
+                <div className="flex items-center gap-4">
+                  <VoltMascot mood={mascotMood} size={76} accessory={equippedAccessory} />
+                  <div className="flex flex-1 flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/70 px-4 py-3.5">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wider text-[#6366F1]">
+                        Français · {current.category}
+                      </p>
+                      <p className="text-lg font-black text-[#1E293B]">{current.cueFrench}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => speakEnglish(current.speakText)}
+                        className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white shadow-[0_3px_0_#4338CA] active:translate-y-[2px] active:shadow-none"
+                        aria-label="Écouter le mot"
+                        title="Écouter le mot"
+                      >
+                        <Volume2 className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => speakEnglish(current.speakText, { slow: true })}
+                        className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl border-2 border-[#E2E8F0] bg-white text-[#475569] shadow-[0_3px_0_#E2E8F0] active:translate-y-[2px] active:shadow-none"
+                        aria-label="Écouter au ralenti"
+                        title="Écouter lentement"
+                      >
+                        <Turtle className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="studio-type-answer" className="sr-only">
+                    Ta réponse en anglais
+                  </label>
+                  <input
+                    id="studio-type-answer"
+                    type="text"
+                    autoFocus
+                    disabled={feedback.status !== "idle"}
+                    value={typedAnswer}
+                    onChange={(event) => setTypedAnswer(event.target.value)}
+                    placeholder="Tape le terme anglais exact…"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="h-14 w-full rounded-2xl border-2 border-[#CBD5E1] bg-white px-4 text-lg font-extrabold text-[#1E293B] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#6366F1] focus:ring-2 focus:ring-[#E0E7FF] disabled:bg-[#F8FAFC]"
+                  />
+                  <div className="flex items-center justify-between text-xs font-bold text-[#64748B]">
+                    <button
+                      type="button"
+                      onClick={() => setShowTypeHint((v) => !v)}
+                      className="cursor-pointer font-extrabold text-[#6366F1] hover:underline"
+                    >
+                      {showTypeHint ? `Indice : ${current.firstLetterHint}` : "Besoin d'un indice ?"}
+                    </button>
+                    <span>Une petite faute de frappe est tolérée</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 7. SPOT ERROR (French-speaker trap drill) */}
+            {current.kind === "spot_error" && (
+              <div className="space-y-5">
+                <div className="rounded-3xl border-2 border-[#FECDD3] bg-[#FFF1F2]/70 p-5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-lg bg-[#FFE4E6] px-2.5 py-0.5 text-[11px] font-black uppercase text-[#E11D48]">
+                      Piège · {current.trapCategory}
+                    </span>
+                    <span className="text-xs font-extrabold text-[#9F1239]">{current.trapTitle}</span>
+                  </div>
+                  <p className="text-base font-black text-[#E11D48] line-through sm:text-lg">
+                    “{current.wrongSentence}”
+                  </p>
+                  <p className="text-xs font-bold text-[#9F1239]">
+                    Choisis la reformulation naturelle en anglais professionnel :
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  {current.choices.map((choice, idx) => {
+                    const selected = selectedChoice === choice;
+                    return (
+                      <button
+                        key={choice}
+                        type="button"
+                        disabled={feedback.status !== "idle"}
+                        aria-pressed={selected}
+                        onClick={() => {
+                          playTapSound(soundEnabled);
+                          setSelectedChoice(choice);
+                          speakEnglish(choice);
+                        }}
+                        className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+                          selected
+                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA] shadow-[0_4px_0_#6366F1]"
+                            : "border-[#E2E8F0] bg-white text-[#1E293B] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                        }`}
+                      >
+                        <span
+                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-xs font-black ${
+                            selected
+                              ? "border-[#6366F1] bg-[#6366F1] text-white"
+                              : "border-[#E2E8F0] text-[#94A3B8]"
+                          }`}
+                        >
+                          {idx + 1}
+                        </span>
+                        <span className="text-sm font-extrabold sm:text-base">{choice}</span>
+                      </button>
                     );
                   })}
                 </div>

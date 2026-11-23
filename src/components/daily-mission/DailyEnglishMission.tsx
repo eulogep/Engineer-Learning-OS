@@ -11,11 +11,15 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   BookOpen,
+  BookOpenText,
   CheckCircle2,
+  Compass,
+  Dumbbell,
   Mic,
   PartyPopper,
   PenLine,
   RotateCcw,
+  Trophy,
 } from "lucide-react";
 import { WordsStep } from "@/components/daily-mission/WordsStep";
 import { SentencesStep } from "@/components/daily-mission/SentencesStep";
@@ -32,12 +36,18 @@ import { VOCABULARY, vocabularyEntry, type VocabularyWord } from "@/modules/dail
 import {
   DEFAULT_GAMIFICATION_STATE,
   GAMIFICATION_STATE_KEY,
+  buildBonusPathUnits,
   buildDailyQuests,
-  claimCompletedQuests,
   buildLearningPathUnits,
+  claimCompletedQuests,
   consumeHeart,
+  equipMascotAccessory,
+  markGrammarDrillCompleted,
+  purchaseShopItem,
   readGamificationState,
+  recordBlitzRun,
   recordLessonCompletion,
+  recordStoryCompletion,
   refillHearts,
   updateOnboardingPreferences,
   wordsForPathNode,
@@ -47,17 +57,39 @@ import {
   type GamificationState,
   type LessonRewardSummary,
   type PathNode,
+  type ShopPurchaseResult,
 } from "@/modules/daily-english/gamification";
 import {
+  ALL_STUDIO_VOCABULARY,
+  ENGINEERING_STORIES,
+  asGeneratorWords,
+  type MascotAccessoryId,
+  type ShopItemId,
+} from "@/modules/daily-english/studio-content";
+import {
+  generateGrammarDrillExercises,
   generateLessonExercises,
   type InteractiveExercise,
 } from "@/modules/daily-english/exercise-generator";
 import { StudioOnboarding } from "@/components/daily-mission/studio/StudioOnboarding";
 import { LearningPathView } from "@/components/daily-mission/studio/LearningPathView";
 import { InteractiveLessonRunner } from "@/components/daily-mission/studio/InteractiveLessonRunner";
+import { StoriesView } from "@/components/daily-mission/studio/StoriesView";
+import { PracticeHubView } from "@/components/daily-mission/studio/PracticeHubView";
+import { SpeedBlitzGame } from "@/components/daily-mission/studio/SpeedBlitzGame";
+import { TrophiesAndShopView } from "@/components/daily-mission/studio/TrophiesAndShopView";
 import { GlossyProgressBar } from "@/components/daily-mission/studio/StudioPrimitives";
+import { playTapSound } from "@/components/daily-mission/studio/sound-effects";
 
-type StudioMode = "onboarding" | "path" | "lesson" | "guided";
+type StudioMode =
+  | "onboarding"
+  | "path"
+  | "stories"
+  | "practice"
+  | "shop"
+  | "blitz"
+  | "lesson"
+  | "guided";
 
 const STEPS: { key: MissionStep; label: string; icon: React.ReactNode }[] = [
   { key: "words", label: "Mots du jour", icon: <BookOpen className="h-4 w-4" /> },
@@ -92,7 +124,6 @@ function notifyGamificationListeners() {
 }
 
 function onGamificationStorage(event: StorageEvent) {
-  // Another tab saved progress: drop the cache so this tab shows the same state.
   if (event.key !== null && event.key !== GAMIFICATION_STATE_KEY) return;
   cachedGamification = null;
   notifyGamificationListeners();
@@ -140,7 +171,6 @@ function commitGamification(next: GamificationState): void {
 }
 
 export function DailyEnglishMission() {
-  // Honor the OS "reduce motion" setting for every Framer Motion animation in the studio.
   return (
     <MotionConfig reducedMotion="user">
       <DailyEnglishStudio />
@@ -149,7 +179,6 @@ export function DailyEnglishMission() {
 }
 
 function DailyEnglishStudio() {
-  // The page is prerendered at deploy time: client values come via useSyncExternalStore.
   const todayText = useSyncExternalStore(noSubscription, todayLabel, () => "");
   const todayKey = useSyncExternalStore(noSubscription, () => dayKey(new Date()), () => "2026-01-01");
   const isClient = useSyncExternalStore(noSubscription, () => true, () => false);
@@ -176,9 +205,11 @@ function DailyEnglishStudio() {
   const [modeOverride, setModeOverride] = useState<StudioMode | null>(null);
   const mode: StudioMode =
     modeOverride ?? (gamification.onboarding.completed ? "path" : "onboarding");
+  const [returnMode, setReturnMode] = useState<StudioMode>("path");
   const [activeLesson, setActiveLesson] = useState<{
     node: PathNode;
     exercises: InteractiveExercise[];
+    isGrammarDrill?: boolean;
   } | null>(null);
   const missionAwardedRef = useRef<string | null>(null);
   const missionFetchedRef = useRef(false);
@@ -264,10 +295,17 @@ function DailyEnglishStudio() {
     ],
   );
 
+  const bonusUnits = useMemo(
+    () => buildBonusPathUnits(gamification.completedNodes),
+    [gamification.completedNodes],
+  );
+
   const quests = useMemo(
     () => buildDailyQuests(gamification, Boolean(mission?.completed)),
     [gamification, mission?.completed],
   );
+
+  const allGeneratorWords = useMemo(() => asGeneratorWords(ALL_STUDIO_VOCABULARY), []);
 
   const handleCompleteOnboarding = useCallback(
     (prefs: { focusTrack: FocusTrack; dailyGoalXp: DailyGoalXp }) => {
@@ -296,12 +334,53 @@ function DailyEnglishStudio() {
       }
       const targetWords = wordsForPathNode(node, dailyVocabulary, VOCABULARY);
       const seed = `${node.id}:${todayKey}:${gamification.lessonsCompletedToday}`;
-      const exercises = generateLessonExercises(targetWords, node.kind, seed, VOCABULARY);
+      const exercises = generateLessonExercises(targetWords, node.kind, seed, allGeneratorWords);
+      setReturnMode("path");
       setActiveLesson({ node, exercises });
       setModeOverride("lesson");
     },
-    [dailyVocabulary, gamification.lessonsCompletedToday, todayKey],
+    [allGeneratorWords, dailyVocabulary, gamification.lessonsCompletedToday, todayKey],
   );
+
+  const handleLaunchGrammarDrill = useCallback(() => {
+    const seed = `${todayKey}:${gamification.grammarDrillsCompleted}:${gamification.lessonsCompletedToday}`;
+    const exercises = generateGrammarDrillExercises(seed, allGeneratorWords);
+    const drillNode: PathNode = {
+      id: `practice:grammar:${todayKey}`,
+      unitId: "practice",
+      kind: "checkpoint",
+      title: "Chasse aux Pièges Francophones",
+      subtitle: "6 erreurs fréquentes + 2 dictées rapides",
+      xpReward: 25,
+      packId: "daily",
+      wordRange: [0, 10],
+      state: "unlocked",
+      stars: 0,
+    };
+    setReturnMode("practice");
+    setActiveLesson({ node: drillNode, exercises, isGrammarDrill: true });
+    setModeOverride("lesson");
+  }, [allGeneratorWords, gamification.grammarDrillsCompleted, gamification.lessonsCompletedToday, todayKey]);
+
+  const handleLaunchSmartReview = useCallback(() => {
+    const seed = `smart:${todayKey}:${gamification.lessonsCompletedToday}`;
+    const exercises = generateLessonExercises(allGeneratorWords, "checkpoint", seed, allGeneratorWords);
+    const reviewNode: PathNode = {
+      id: `practice:smart:${todayKey}`,
+      unitId: "practice",
+      kind: "checkpoint",
+      title: "Révision Éclair · 240 termes",
+      subtitle: "Mix complet : écoute, frappe libre, banque de mots et grammaire",
+      xpReward: 30,
+      packId: "daily",
+      wordRange: [0, 10],
+      state: "unlocked",
+      stars: 0,
+    };
+    setReturnMode("practice");
+    setActiveLesson({ node: reviewNode, exercises });
+    setModeOverride("lesson");
+  }, [allGeneratorWords, gamification.lessonsCompletedToday, todayKey]);
 
   const handleLoseHeart = useCallback(() => {
     commitGamification(consumeHeart(getGamificationSnapshot()));
@@ -331,11 +410,60 @@ function DailyEnglishStudio() {
         baseXp: activeLesson?.node.xpReward ?? 20,
         today: todayKey,
       });
-      const quests = claimCompletedQuests(summary.state, Boolean(mission?.completed), todayKey);
-      persistGamification(quests.state);
-      return { ...summary, state: quests.state, claimedQuests: quests.claimedQuests };
+      const withDrill = activeLesson?.isGrammarDrill
+        ? markGrammarDrillCompleted(summary.state)
+        : summary.state;
+      const claimed = claimCompletedQuests(withDrill, Boolean(mission?.completed), todayKey);
+      persistGamification(claimed.state);
+      return { ...summary, state: claimed.state, claimedQuests: claimed.claimedQuests };
     },
     [activeLesson, mission?.completed, persistGamification, todayKey],
+  );
+
+  const handleStoryComplete = useCallback(
+    (input: { storyId: string; xpReward: number }) => {
+      const result = recordStoryCompletion(getGamificationSnapshot(), {
+        storyId: input.storyId,
+        xpReward: input.xpReward,
+        today: todayKey,
+      });
+      const claimed = claimCompletedQuests(result.state, Boolean(mission?.completed), todayKey);
+      persistGamification(claimed.state);
+      return { xpEarned: result.xpEarned, gemsEarned: result.gemsEarned, boosted: result.boosted };
+    },
+    [mission?.completed, persistGamification, todayKey],
+  );
+
+  const handleBlitzFinish = useCallback(
+    (score: number) => {
+      const result = recordBlitzRun(getGamificationSnapshot(), { score, today: todayKey });
+      const claimed = claimCompletedQuests(result.state, Boolean(mission?.completed), todayKey);
+      persistGamification(claimed.state);
+      return {
+        xpEarned: result.xpEarned,
+        gemsEarned: result.gemsEarned,
+        isNewBest: result.isNewBest,
+      };
+    },
+    [mission?.completed, persistGamification, todayKey],
+  );
+
+  const handlePurchase = useCallback(
+    (itemId: ShopItemId): ShopPurchaseResult => {
+      const result = purchaseShopItem(getGamificationSnapshot(), itemId);
+      if (result.ok) {
+        persistGamification(result.state);
+      }
+      return result;
+    },
+    [persistGamification],
+  );
+
+  const handleEquipAccessory = useCallback(
+    (accessoryId: MascotAccessoryId | null) => {
+      persistGamification(equipMascotAccessory(getGamificationSnapshot(), accessoryId));
+    },
+    [persistGamification],
   );
 
   if (mode === "onboarding") {
@@ -358,38 +486,159 @@ function DailyEnglishStudio() {
         exercises={activeLesson.exercises}
         hearts={gamification.hearts}
         soundEnabled={gamification.onboarding.soundEnabled}
+        equippedAccessory={gamification.equippedAccessory}
         onLoseHeart={handleLoseHeart}
         onRefillHearts={handleRefillHearts}
         onComplete={handleLessonComplete}
         onExit={() => {
           setActiveLesson(null);
-          setModeOverride("path");
+          setModeOverride(returnMode);
         }}
       />
     );
   }
 
-  if (mode === "path") {
+  if (mode === "blitz") {
     return (
-      <LearningPathView
-        gamification={gamification}
-        units={units}
-        quests={quests}
-        progressSummary={progressSummary}
-        todayLabel={todayText}
-        dailyVocabulary={dailyVocabulary}
-        allVocabulary={VOCABULARY}
-        onStartNode={handleStartNode}
-        onOpenGuidedMission={() => setModeOverride("guided")}
-        onRefillHearts={handleRefillHearts}
-        onToggleSound={handleToggleSound}
-        onOpenOnboarding={() => setModeOverride("onboarding")}
+      <SpeedBlitzGame
+        bestScore={gamification.bestBlitzScore}
+        soundEnabled={gamification.onboarding.soundEnabled}
+        equippedAccessory={gamification.equippedAccessory}
+        onFinish={handleBlitzFinish}
+        onExit={() => setModeOverride("practice")}
       />
     );
   }
 
+  // Primary Studio Tabs Bar (visible on path / stories / practice / shop)
+  const studioTabs: ReadonlyArray<{
+    id: "path" | "stories" | "practice" | "shop" | "guided";
+    label: string;
+    badge?: string;
+    icon: typeof Compass;
+  }> = [
+    { id: "path", label: "Parcours", badge: "9 unités", icon: Compass },
+    {
+      id: "stories",
+      label: "Histoires",
+      badge: `${gamification.completedStoryIds.length}/${ENGINEERING_STORIES.length}`,
+      icon: BookOpenText,
+    },
+    { id: "practice", label: "Entraînement", badge: "240 mots", icon: Dumbbell },
+    { id: "shop", label: "Boutique & Succès", icon: Trophy },
+    { id: "guided", label: "Mission orale", icon: Mic },
+  ];
+
+  const renderTabBar = () => (
+    <nav
+      aria-label="Sections du Studio Daily English"
+      className="elos-studio mb-5 flex items-center gap-2 overflow-x-auto pb-1"
+    >
+      {studioTabs.map((tab) => {
+        const Icon = tab.icon;
+        const active = mode === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => {
+              playTapSound(gamification.onboarding.soundEnabled);
+              setModeOverride(tab.id);
+            }}
+            aria-current={active ? "page" : undefined}
+            className={`inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-2xl border-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${
+              active
+                ? "border-[#047857] bg-[#059669] text-white shadow-[0_3px_0_#047857]"
+                : "border-[#E2E8F0] bg-white text-[#475569] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#1E293B]"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{tab.label}</span>
+            {tab.badge && (
+              <span
+                className={`rounded-lg px-1.5 py-0.5 text-[10px] font-black ${
+                  active ? "bg-white/20 text-white" : "bg-[#F1F5F9] text-[#64748B]"
+                }`}
+              >
+                {tab.badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </nav>
+  );
+
+  if (mode === "path") {
+    return (
+      <div>
+        {renderTabBar()}
+        <LearningPathView
+          gamification={gamification}
+          units={units}
+          bonusUnits={bonusUnits}
+          quests={quests}
+          progressSummary={progressSummary}
+          todayLabel={todayText}
+          dailyVocabulary={dailyVocabulary}
+          allVocabulary={VOCABULARY}
+          onStartNode={handleStartNode}
+          onOpenGuidedMission={() => setModeOverride("guided")}
+          onRefillHearts={handleRefillHearts}
+          onToggleSound={handleToggleSound}
+          onOpenOnboarding={() => setModeOverride("onboarding")}
+        />
+      </div>
+    );
+  }
+
+  if (mode === "stories") {
+    return (
+      <div>
+        {renderTabBar()}
+        <StoriesView
+          completedStoryIds={gamification.completedStoryIds}
+          soundEnabled={gamification.onboarding.soundEnabled}
+          equippedAccessory={gamification.equippedAccessory}
+          onStoryComplete={handleStoryComplete}
+        />
+      </div>
+    );
+  }
+
+  if (mode === "practice") {
+    return (
+      <div>
+        {renderTabBar()}
+        <PracticeHubView
+          bestBlitzScore={gamification.bestBlitzScore}
+          grammarDrillsCompleted={gamification.grammarDrillsCompleted}
+          reviews={localReviews}
+          soundEnabled={gamification.onboarding.soundEnabled}
+          equippedAccessory={gamification.equippedAccessory}
+          onLaunchBlitz={() => setModeOverride("blitz")}
+          onLaunchGrammarDrill={handleLaunchGrammarDrill}
+          onLaunchSmartReview={handleLaunchSmartReview}
+        />
+      </div>
+    );
+  }
+
+  if (mode === "shop") {
+    return (
+      <div>
+        {renderTabBar()}
+        <TrophiesAndShopView
+          gamification={gamification}
+          missionCompletedToday={Boolean(mission?.completed)}
+          onPurchase={handlePurchase}
+          onEquipAccessory={handleEquipAccessory}
+        />
+      </div>
+    );
+  }
+
   // Full 6-step Guided Mission (Words → Sentences → Speaking → Correction → Repeat → Done)
-  // Restyled with the tactile Daily English visual language while keeping 100% of its original workflow.
   const stepIndex = STEPS.findIndex((step) => step.key === currentStep);
   const stepPct = Math.round(((stepIndex + 1) / STEPS.length) * 100);
 
@@ -433,9 +682,7 @@ function DailyEnglishStudio() {
                 Mode local
               </Badge>
             )}
-            <Badge
-              className="rounded-xl bg-[#D1FAE5] px-3 py-1 text-xs font-black text-[#047857] hover:bg-[#D1FAE5]"
-            >
+            <Badge className="rounded-xl bg-[#D1FAE5] px-3 py-1 text-xs font-black text-[#047857] hover:bg-[#D1FAE5]">
               Étape {stepIndex + 1}/{STEPS.length}
             </Badge>
           </div>

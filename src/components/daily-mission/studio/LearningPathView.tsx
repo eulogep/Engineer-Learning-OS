@@ -33,6 +33,7 @@ import {
 } from "@/modules/daily-english/gamification";
 import type { LocalProgressSummary } from "@/modules/daily-english/local-mission";
 import type { VocabularyWord } from "@/modules/daily-english/vocabulary";
+import { ALL_STUDIO_VOCABULARY, type StudioVocabularyWord } from "@/modules/daily-english/studio-content";
 import { VoltMascot } from "./VoltMascot";
 import { GlossyProgressBar, TactileButton, type TactileVariant } from "./StudioPrimitives";
 import { playTapSound, speakEnglish } from "./sound-effects";
@@ -40,6 +41,7 @@ import { playTapSound, speakEnglish } from "./sound-effects";
 interface LearningPathViewProps {
   gamification: GamificationState;
   units: readonly LearningPathUnit[];
+  bonusUnits: readonly LearningPathUnit[];
   quests: readonly DailyQuest[];
   progressSummary: LocalProgressSummary | null;
   todayLabel: string;
@@ -134,6 +136,7 @@ const PATH_OFFSETS = [0, -52, -72, -32, 36, 68, 32] as const;
 export function LearningPathView({
   gamification,
   units,
+  bonusUnits,
   quests,
   progressSummary,
   todayLabel,
@@ -155,12 +158,15 @@ export function LearningPathView({
     Math.round((gamification.todayXp / Math.max(1, gamification.onboarding.dailyGoalXp)) * 100),
   );
 
-  const guideUnit = units.find((u) => u.id === guideUnitId) ?? null;
-  const guideWords = guideUnit
+  const allUnits = [...units, ...bonusUnits];
+  const guideUnit = allUnits.find((u) => u.id === guideUnitId) ?? null;
+  const guideWords: readonly StudioVocabularyWord[] = guideUnit
     ? guideUnit.packId === "daily"
       ? dailyVocabulary
-      : allVocabulary.filter((w) => w.pack === guideUnit.packId).slice(0, 12)
+      : ALL_STUDIO_VOCABULARY.filter((w) => w.pack === guideUnit.packId)
     : [];
+  // Keep `allVocabulary` referenced cleanly for core prop compatibility.
+  void allVocabulary;
 
   return (
     <div className="elos-studio space-y-6">
@@ -267,11 +273,21 @@ export function LearningPathView({
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_320px]">
         {/* Winding Path Column */}
         <div className="space-y-8">
-          {units.map((unit) => {
+          {allUnits.map((unit, unitListIdx) => {
             const theme = THEME_STYLES[unit.theme];
+            const isFirstBonus = unitListIdx === units.length && bonusUnits.length > 0;
             return (
+              <div key={unit.id} className="space-y-4">
+                {isFirstBonus && (
+                  <div className="flex items-center gap-3 pt-2">
+                    <div className="h-0.5 flex-1 bg-[#E2E8F0]" />
+                    <span className="rounded-xl border-2 border-[#C7D2FE] bg-[#EEF2FF] px-3.5 py-1 text-xs font-black uppercase tracking-wider text-[#4338CA]">
+                      Parcours Avancé Ingénieur (+90 termes B2–C1)
+                    </span>
+                    <div className="h-0.5 flex-1 bg-[#E2E8F0]" />
+                  </div>
+                )}
               <section
-                key={unit.id}
                 aria-label={unit.title}
                 className="overflow-visible rounded-3xl border-2 border-[#E2E8F0] bg-white pb-8 shadow-sm"
               >
@@ -310,7 +326,11 @@ export function LearningPathView({
                   {/* Companion mascot standing alongside the first unit */}
                   {unit.unitNumber === 1 && (
                     <div className="pointer-events-none absolute right-6 top-16 hidden sm:block">
-                      <VoltMascot mood={unit.completedCount > 0 ? "happy" : "idle"} size={92} />
+                      <VoltMascot
+                        mood={unit.completedCount > 0 ? "happy" : "idle"}
+                        size={92}
+                        accessory={gamification.equippedAccessory}
+                      />
                     </div>
                   )}
 
@@ -442,6 +462,7 @@ export function LearningPathView({
                   })}
                 </div>
               </section>
+              </div>
             );
           })}
         </div>

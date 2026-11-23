@@ -1,20 +1,27 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { MascotAccessoryId } from "@/modules/daily-english/studio-content";
 
 export type MascotMood = "idle" | "happy" | "celebrating" | "thinking" | "oops" | "listening" | "hero";
 
 interface VoltMascotProps {
   mood?: MascotMood;
   size?: number;
+  accessory?: MascotAccessoryId | null;
   className?: string;
 }
 
 /**
  * Original Engineer Learning OS mascot ("Bit" — a friendly emerald circuit-bot).
- * Expressive Framer Motion reactions tuned for gamified learning feedback.
+ * Supports equippable studio accessories unlocked in the local gems shop.
  */
-export function VoltMascot({ mood = "idle", size = 96, className = "" }: VoltMascotProps) {
+export function VoltMascot({
+  mood = "idle",
+  size = 96,
+  accessory = null,
+  className = "",
+}: VoltMascotProps) {
   const isHappy = mood === "happy" || mood === "celebrating" || mood === "hero";
   const isOops = mood === "oops";
   const isListening = mood === "listening";
@@ -64,9 +71,35 @@ export function VoltMascot({ mood = "idle", size = 96, className = "" }: VoltMas
           </g>
         )}
 
-        {/* Antenna / spark crest */}
-        <line x1="60" y1="26" x2="60" y2="12" stroke="#047857" strokeWidth="5" strokeLinecap="round" />
-        <circle cx="60" cy="11" r="6.5" fill={isOops ? "#F43F5E" : "#FBBF24"} stroke="#047857" strokeWidth="2.5" />
+        {/* Antenna / spark crest (replaced by golden crown if equipped) */}
+        {accessory === "crown" ? (
+          <g>
+            <path
+              d="M36 27L42 10L53 19L60 7L67 19L78 10L84 27Z"
+              fill="#FBBF24"
+              stroke="#B45309"
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+            />
+            <circle cx="60" cy="18" r="2.6" fill="#6366F1" />
+          </g>
+        ) : (
+          <>
+            <line x1="60" y1="26" x2="60" y2="12" stroke="#047857" strokeWidth="5" strokeLinecap="round" />
+            <circle cx="60" cy="11" r="6.5" fill={isOops ? "#F43F5E" : "#FBBF24"} stroke="#047857" strokeWidth="2.5" />
+          </>
+        )}
+
+        {/* Studio Headphones band */}
+        {accessory === "headphones" && (
+          <path
+            d="M21 56C21 28 38 16 60 16C82 16 99 28 99 56"
+            stroke="#4338CA"
+            strokeWidth="6"
+            strokeLinecap="round"
+            fill="none"
+          />
+        )}
 
         {/* Listening sound arcs */}
         {isListening && (
@@ -78,9 +111,23 @@ export function VoltMascot({ mood = "idle", size = 96, className = "" }: VoltMas
           </g>
         )}
 
-        {/* Ears / side sensors */}
-        <rect x="17" y="52" width="12" height="22" rx="6" fill={isListening ? "#6366F1" : "#047857"} />
-        <rect x="91" y="52" width="12" height="22" rx="6" fill={isListening ? "#6366F1" : "#047857"} />
+        {/* Ears / side sensors (or studio earcups) */}
+        <rect
+          x={accessory === "headphones" ? 14 : 17}
+          y={accessory === "headphones" ? 48 : 52}
+          width={accessory === "headphones" ? 15 : 12}
+          height={accessory === "headphones" ? 28 : 22}
+          rx="7"
+          fill={accessory === "headphones" ? "#6366F1" : isListening ? "#6366F1" : "#047857"}
+        />
+        <rect
+          x={accessory === "headphones" ? 91 : 91}
+          y={accessory === "headphones" ? 48 : 52}
+          width={accessory === "headphones" ? 15 : 12}
+          height={accessory === "headphones" ? 28 : 22}
+          rx="7"
+          fill={accessory === "headphones" ? "#6366F1" : isListening ? "#6366F1" : "#047857"}
+        />
 
         {/* Main rounded body with 3D underside */}
         <rect x="24" y="28" width="72" height="74" rx="28" fill="#047857" />
@@ -139,10 +186,40 @@ export function VoltMascot({ mood = "idle", size = 96, className = "" }: VoltMas
           <path d="M54 67C57 71 63 71 66 67" stroke="#0F172A" strokeWidth="3.2" strokeLinecap="round" fill="none" />
         )}
 
-        {/* Chest circuit badge */}
-        <rect x="49" y="83" width="22" height="8" rx="4" fill="#D1FAE5" />
-        <circle cx="55" cy="87" r="2" fill="#047857" />
-        <circle cx="65" cy="87" r="2" fill="#6366F1" />
+        {/* Cyber Visor glasses */}
+        {accessory === "visor" && (
+          <g>
+            <rect
+              x="35"
+              y="49"
+              width="50"
+              height="16"
+              rx="8"
+              fill="#6366F1"
+              fillOpacity="0.82"
+              stroke="#312E81"
+              strokeWidth="2.5"
+            />
+            <line x1="42" y1="54" x2="56" y2="54" stroke="#A5F3FC" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="65" y1="54" x2="77" y2="54" stroke="#A5F3FC" strokeWidth="2.5" strokeLinecap="round" />
+          </g>
+        )}
+
+        {/* Engineer Scarf */}
+        {accessory === "scarf" ? (
+          <g>
+            <rect x="26" y="80" width="68" height="12" rx="6" fill="#6366F1" stroke="#4338CA" strokeWidth="2" />
+            <rect x="66" y="87" width="14" height="17" rx="5" fill="#4338CA" />
+            <line x1="34" y1="86" x2="86" y2="86" stroke="#A5B4FC" strokeWidth="2" strokeDasharray="6 4" />
+          </g>
+        ) : (
+          /* Chest circuit badge */
+          <>
+            <rect x="49" y="83" width="22" height="8" rx="4" fill="#D1FAE5" />
+            <circle cx="55" cy="87" r="2" fill="#047857" />
+            <circle cx="65" cy="87" r="2" fill="#6366F1" />
+          </>
+        )}
 
         {/* Little feet */}
         <rect x="38" y="96" width="14" height="10" rx="5" fill="#F97316" />
