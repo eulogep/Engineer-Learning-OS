@@ -159,9 +159,29 @@ Setup, privacy notes and cron recipes: **[`docs/integrations/HERMES.md`](docs/in
 |---|---|
 | ![Matières — academic workspace](public/screenshots/subjects.png) | ![Progression — competency graph](public/screenshots/progress.png) |
 
-| Daily English Mission |
-|---|
-| ![Daily English Mission](public/screenshots/daily-english.png) |
+#### 🗣️ Daily English Studio
+
+| Gamified Learning Path & Daily Quests | Interactive Lesson |
+|---|---|
+| ![Daily English Studio — learning path and daily quests](public/screenshots/studio-path.png) | ![Interactive lesson with instant feedback](public/screenshots/studio-lesson.png) |
+
+| Engineering Stories | Practice Hub & Grammar Traps |
+|---|---|
+| ![Engineering stories with comprehension questions](public/screenshots/studio-stories.png) | ![Practice hub with French-speaker grammar traps](public/screenshots/studio-practice.png) |
+
+| Speed Blitz (60 s) | Trophies & Gem Shop |
+|---|---|
+| ![Speed Blitz timed translation game](public/screenshots/studio-blitz.png) | ![Trophies and gem shop with mascot accessories](public/screenshots/studio-shop.png) |
+
+#### 🧪 CS Engineering Labs
+
+| Networking — CIDR/VLSM | Linux Sandbox |
+|---|---|
+| ![Networking lab — IPv4 subnetting](public/screenshots/cs-labs-networking.png) | ![Simulated Linux shell — securing an SSH key](public/screenshots/cs-labs-linux.png) |
+
+| SQL Workshop | SAE Scenarios |
+|---|---|
+| ![SQL workshop on synthetic servers and incidents tables](public/screenshots/cs-labs-sql.png) | ![SAE scenario — DHCP/VLAN outage diagnosis](public/screenshots/cs-labs-sae.png) |
 
 </div>
 
