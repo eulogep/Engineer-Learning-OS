@@ -1,5 +1,6 @@
 import type { PathNodeKind } from "./gamification";
 import { VOCABULARY, type VocabularyWord } from "./vocabulary";
+import { GRAMMAR_TRAPS, type GrammarTrap } from "./studio-content";
 
 /**
  * Deterministic interactive exercise generator for Daily English.
@@ -12,7 +13,9 @@ export type ExerciseKind =
   | "word_bank"
   | "match_pairs"
   | "listening_choice"
-  | "fill_blank";
+  | "fill_blank"
+  | "type_answer"
+  | "spot_error";
 
 export type TranslateChoiceExercise = Readonly<{
   id: string;
@@ -76,12 +79,39 @@ export type FillBlankExercise = Readonly<{
   correctAnswer: string;
 }>;
 
+export type TypeAnswerExercise = Readonly<{
+  id: string;
+  kind: "type_answer";
+  prompt: string;
+  cueFrench: string;
+  category: string;
+  speakText: string;
+  example: string;
+  correctAnswer: string;
+  firstLetterHint: string;
+}>;
+
+export type SpotErrorExercise = Readonly<{
+  id: string;
+  kind: "spot_error";
+  prompt: string;
+  trapTitle: string;
+  trapCategory: string;
+  wrongSentence: string;
+  choices: readonly string[];
+  correctAnswer: string;
+  explanation: string;
+  mnemonic: string;
+}>;
+
 export type InteractiveExercise =
   | TranslateChoiceExercise
   | WordBankExercise
   | MatchPairsExercise
   | ListeningChoiceExercise
-  | FillBlankExercise;
+  | FillBlankExercise
+  | TypeAnswerExercise
+  | SpotErrorExercise;
 
 /** Simple deterministic PRNG (Mulberry32) so tests & sessions are reproducible. */
 function mulberry32(seed: number): () => number {
@@ -310,6 +340,71 @@ function createFillBlank(
   };
 }
 
+function createTypeAnswer(
+  word: VocabularyWord,
+  index: number,
+): TypeAnswerExercise {
+  const firstChar = word.word.slice(0, 1);
+  const masked = word.word
+    .split(" ")
+    .map((part) => (part.length <= 2 ? part[0] + "•" : `${part[0]}${"•".repeat(part.length - 1)}`))
+    .join(" ");
+  return {
+    id: `ex-type-${index}-${word.word.toLowerCase().replace(/\s+/g, "-")}`,
+    kind: "type_answer",
+    prompt: "Écris le terme anglais exact",
+    cueFrench: word.translation,
+    category: word.category,
+    speakText: word.word,
+    example: word.example,
+    correctAnswer: word.word,
+    firstLetterHint: `${firstChar.toUpperCase()}… (${masked})`,
+  };
+}
+
+function createSpotError(
+  trap: GrammarTrap,
+  index: number,
+  rand: () => number,
+): SpotErrorExercise {
+  return {
+    id: `ex-spot-${index}-${trap.id}`,
+    kind: "spot_error",
+    prompt: "Corrige ce piège francophone fréquent",
+    trapTitle: trap.title,
+    trapCategory: trap.category,
+    wrongSentence: trap.wrongExample,
+    choices: shuffle([trap.rightExample, ...trap.distractors], rand),
+    correctAnswer: trap.rightExample,
+    explanation: trap.explanation,
+    mnemonic: trap.mnemonic,
+  };
+}
+
+/**
+ * Generates a dedicated 8-exercise Grammar & French False-Friends drill
+ * combining Spot-the-Error challenges and active recall typing.
+ */
+export function generateGrammarDrillExercises(
+  seedKey: string,
+  vocabularyPool: readonly VocabularyWord[] = VOCABULARY,
+): InteractiveExercise[] {
+  const rand = mulberry32(hashSeed(`grammar-drill:${seedKey}`));
+  const traps = shuffle(GRAMMAR_TRAPS, rand).slice(0, 6);
+  const words = shuffle(vocabularyPool, rand).slice(0, 2);
+  const exercises: InteractiveExercise[] = [];
+  traps.forEach((trap, idx) => {
+    exercises.push(createSpotError(trap, idx, rand));
+    if (idx === 2 && words[0]) {
+      exercises.push(createTypeAnswer(words[0], 10));
+    }
+    if (idx === 5 && words[1]) {
+      exercises.push(createTypeAnswer(words[1], 11));
+    }
+  });
+  return exercises;
+}
+
 /**
  * Generates an interactive 7-to-8-step gamified lesson tailored to the
  * selected path node kind. Pure & deterministic for a given seed.
@@ -324,6 +419,7 @@ export function generateLessonExercises(
   const rand = mulberry32(hashSeed(`${seedKey}:${nodeKind}`));
   const picked = shuffle(source, rand);
   const at = (i: number) => picked[i % picked.length];
+  const randomTrap = shuffle(GRAMMAR_TRAPS, rand)[0];
 
   const exercises: InteractiveExercise[] = [];
 
@@ -344,7 +440,7 @@ export function generateLessonExercises(
       createFillBlank(at(2), distractorPool, 2, rand),
       createWordBank(at(3), distractorPool, 3, rand),
       createMatchPairs(picked, distractorPool, 4, rand),
-      createWordBank(at(4), distractorPool, 5, rand),
+      createTypeAnswer(at(4), 5),
       createFillBlank(at(5), distractorPool, 6, rand),
     );
   } else if (nodeKind === "match_pairs") {
@@ -360,7 +456,7 @@ export function generateLessonExercises(
     exercises.push(
       createListeningChoice(at(0), distractorPool, 0, rand),
       createListeningChoice(at(1), distractorPool, 1, rand),
-      createWordBank(at(2), distractorPool, 2, rand),
+      createTypeAnswer(at(2), 2),
       createFillBlank(at(3), distractorPool, 3, rand),
       createListeningChoice(at(4), distractorPool, 4, rand),
       createMatchPairs(picked, distractorPool, 5, rand),
@@ -374,8 +470,8 @@ export function generateLessonExercises(
       createWordBank(at(2), distractorPool, 2, rand),
       createFillBlank(at(3), distractorPool, 3, rand),
       createMatchPairs(picked, distractorPool, 4, rand),
-      createTranslateChoice(at(4), distractorPool, "fr_to_en", 5, rand),
-      createWordBank(at(5), distractorPool, 6, rand),
+      createTypeAnswer(at(4), 5),
+      createSpotError(randomTrap, 6, rand),
       createFillBlank(at(6), distractorPool, 7, rand),
     );
   }
@@ -392,11 +488,29 @@ export function normalizeAnswer(value: string): string {
     .replace(/\s+/g, " ");
 }
 
-/** Evaluates a learner's answer for choice, listening, fill-blank, or word-bank exercises. */
+/** Bounded Levenshtein edit distance for gentle typo detection on free-typed answers. */
+export function editDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i += 1) {
+    let diag = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const temp = prev[j];
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + cost);
+      diag = temp;
+    }
+  }
+  return prev[b.length];
+}
+
+/** Evaluates a learner's answer for choice, listening, fill-blank, word-bank, spot-error, or typed exercises. */
 export function evaluateExerciseAnswer(
   exercise: InteractiveExercise,
   answer: string | readonly string[],
-): { correct: boolean; expected: string } {
+): { correct: boolean; expected: string; almostCorrect?: boolean } {
   if (exercise.kind === "match_pairs") {
     return { correct: answer === "MATCHED_ALL", expected: "Toutes les paires associées" };
   }
@@ -404,6 +518,18 @@ export function evaluateExerciseAnswer(
     const joined = Array.isArray(answer) ? answer.join(" ") : String(answer);
     const correct = normalizeAnswer(joined) === normalizeAnswer(exercise.correctSentence);
     return { correct, expected: exercise.correctSentence };
+  }
+  if (exercise.kind === "type_answer") {
+    const given = normalizeAnswer(Array.isArray(answer) ? answer.join(" ") : String(answer));
+    const expected = normalizeAnswer(exercise.correctAnswer);
+    if (given === expected) {
+      return { correct: true, expected: exercise.correctAnswer };
+    }
+    // Single-character typo on words of 5+ letters is accepted with a friendly spelling reminder.
+    if (expected.length >= 5 && editDistance(given, expected) === 1) {
+      return { correct: true, expected: exercise.correctAnswer, almostCorrect: true };
+    }
+    return { correct: false, expected: exercise.correctAnswer };
   }
   const given = Array.isArray(answer) ? answer.join(" ") : String(answer);
   const correct = normalizeAnswer(given) === normalizeAnswer(exercise.correctAnswer);

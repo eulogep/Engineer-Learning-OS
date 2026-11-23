@@ -3,6 +3,17 @@ import { daysBetween, reviewStatus } from "./spaced-review";
 import type { KeyValueStorage } from "./local-mission";
 import { localWordId } from "./local-mission";
 import { VOCABULARY_PACKS, type CefrLevel, type VocabularyPackId, type VocabularyWord } from "./vocabulary";
+import {
+  ALL_STUDIO_VOCABULARY,
+  BONUS_VOCABULARY_PACKS,
+  STUDIO_SHOP_ITEMS,
+  VALID_MASCOT_ACCESSORIES,
+  asGeneratorWords,
+  type BonusPackId,
+  type MascotAccessoryId,
+  type ShopItemId,
+  type StudioPackId,
+} from "./studio-content";
 
 /**
  * Pure, local-first gamification & learning-path engine for Daily English.
@@ -53,6 +64,22 @@ export type GamificationState = Readonly<{
   /** Quest ids whose gem reward was already granted today (reset on day rollover). */
   claimedQuestIds: readonly string[];
   onboarding: OnboardingPreferences;
+  /** Completed interactive engineering stories. */
+  completedStoryIds: readonly string[];
+  /** Personal best score on the 60s Speed Blitz arcade mode. */
+  bestBlitzScore: number;
+  /** Total lessons completed with 100% accuracy. */
+  perfectLessonsCount: number;
+  /** Total grammar/false-friend drills completed. */
+  grammarDrillsCompleted: number;
+  /** Streak Freeze shields owned (auto-consumed if a single day is missed). */
+  streakFreezes: number;
+  /** Whether the next completed activity earns 2× XP. */
+  xpBoostActive: boolean;
+  /** Unlocked mascot cosmetic accessories. */
+  ownedAccessories: readonly MascotAccessoryId[];
+  /** Currently equipped mascot accessory (or null). */
+  equippedAccessory: MascotAccessoryId | null;
 }>;
 
 export type PathNode = Readonly<{
@@ -62,7 +89,7 @@ export type PathNode = Readonly<{
   title: string;
   subtitle: string;
   xpReward: number;
-  packId: VocabularyPackId | "daily";
+  packId: StudioPackId | "daily";
   wordRange: readonly [number, number];
   state: "completed" | "current" | "unlocked" | "locked";
   stars: 0 | 1 | 2 | 3;
@@ -73,8 +100,8 @@ export type LearningPathUnit = Readonly<{
   unitNumber: number;
   title: string;
   subtitle: string;
-  level: CefrLevel | "B1–B2";
-  packId: VocabularyPackId | "daily";
+  level: CefrLevel | "B1–B2" | "B2–C1";
+  packId: StudioPackId | "daily";
   theme: PathThemeId;
   completedCount: number;
   totalCount: number;
@@ -110,6 +137,14 @@ export const DEFAULT_GAMIFICATION_STATE: GamificationState = Object.freeze({
     dailyGoalXp: 50,
     soundEnabled: true,
   }),
+  completedStoryIds: [],
+  bestBlitzScore: 0,
+  perfectLessonsCount: 0,
+  grammarDrillsCompleted: 0,
+  streakFreezes: 0,
+  xpBoostActive: false,
+  ownedAccessories: [],
+  equippedAccessory: null,
 });
 
 const PACK_THEMES: Record<VocabularyPackId, PathThemeId> = {
@@ -191,6 +226,10 @@ function isFocusTrack(value: unknown): value is FocusTrack {
   );
 }
 
+function isMascotAccessory(value: unknown): value is MascotAccessoryId {
+  return typeof value === "string" && (VALID_MASCOT_ACCESSORIES as readonly string[]).includes(value);
+}
+
 /** Normalizes day-scoped counters when the calendar day rolls over. */
 export function syncGamificationDay(state: GamificationState, today: DayKey): GamificationState {
   if (state.lastActiveDay === today) return state;
@@ -198,13 +237,23 @@ export function syncGamificationDay(state: GamificationState, today: DayKey): Ga
   // Determine whether yesterday was active so the streak stays alive until today ends.
   const yesterday = previousDayKey(today);
   const keepStreak = state.lastActiveDay === yesterday;
+  // If exactly one day was missed (gap === 2 days) and a Streak Freeze is owned, auto-protect!
+  const missedOneDay =
+    state.lastActiveDay !== null &&
+    state.streak > 0 &&
+    daysBetween(state.lastActiveDay, today) === 2 &&
+    state.streakFreezes > 0;
+
   return {
     ...state,
     todayXp: 0,
     lessonsCompletedToday: 0,
     claimedQuestIds: [],
     hearts: MAX_HEARTS,
-    streak: keepStreak ? state.streak : 0,
+    streak: keepStreak || missedOneDay ? state.streak : 0,
+    streakFreezes: missedOneDay ? state.streakFreezes - 1 : state.streakFreezes,
+    // Advance lastActiveDay to yesterday when a freeze bridges the gap so the next completion increments the streak.
+    lastActiveDay: missedOneDay ? yesterday : state.lastActiveDay,
   };
 }
 
@@ -222,6 +271,14 @@ export function readGamificationState(storage: KeyValueStorage | null, today: Da
     const onboardingRaw = (raw.onboarding && typeof raw.onboarding === "object"
       ? raw.onboarding
       : {}) as Record<string, unknown>;
+
+    const ownedAccessories = Array.isArray(raw.ownedAccessories)
+      ? Array.from(new Set(raw.ownedAccessories.filter(isMascotAccessory)))
+      : [];
+    const equippedAccessory =
+      isMascotAccessory(raw.equippedAccessory) && ownedAccessories.includes(raw.equippedAccessory)
+        ? raw.equippedAccessory
+        : null;
 
     const loaded: GamificationState = {
       version: 1,
@@ -242,6 +299,18 @@ export function readGamificationState(storage: KeyValueStorage | null, today: Da
         dailyGoalXp: isDailyGoal(onboardingRaw.dailyGoalXp) ? onboardingRaw.dailyGoalXp : 50,
         soundEnabled: onboardingRaw.soundEnabled !== false,
       },
+      completedStoryIds: Array.isArray(raw.completedStoryIds)
+        ? Array.from(new Set(raw.completedStoryIds.filter((id): id is string => typeof id === "string")))
+        : [],
+      bestBlitzScore: isFiniteNonNegative(raw.bestBlitzScore) ? Math.floor(raw.bestBlitzScore) : 0,
+      perfectLessonsCount: isFiniteNonNegative(raw.perfectLessonsCount) ? Math.floor(raw.perfectLessonsCount) : 0,
+      grammarDrillsCompleted: isFiniteNonNegative(raw.grammarDrillsCompleted)
+        ? Math.floor(raw.grammarDrillsCompleted)
+        : 0,
+      streakFreezes: isFiniteNonNegative(raw.streakFreezes) ? Math.min(5, Math.floor(raw.streakFreezes)) : 0,
+      xpBoostActive: raw.xpBoostActive === true,
+      ownedAccessories,
+      equippedAccessory,
     };
     return syncGamificationDay(loaded, today);
   } catch {
@@ -300,6 +369,7 @@ export type LessonRewardSummary = Readonly<{
   xpEarned: number;
   comboBonus: number;
   perfectBonus: number;
+  boosted: boolean;
   gemsEarned: number;
   accuracy: number;
   stars: 1 | 2 | 3;
@@ -318,7 +388,9 @@ export function recordLessonCompletion(
   const baseXp = input.baseXp ?? 20;
   const comboBonus = Math.min(15, Math.max(0, input.maxCombo - 1) * 2);
   const perfectBonus = accuracy === 100 ? 10 : 0;
-  const xpEarned = baseXp + comboBonus + perfectBonus;
+  const rawXp = baseXp + comboBonus + perfectBonus;
+  const boosted = synced.xpBoostActive;
+  const xpEarned = boosted ? rawXp * 2 : rawXp;
   const stars: 1 | 2 | 3 = accuracy >= 95 ? 3 : accuracy >= 75 ? 2 : 1;
   const gemsEarned = stars * 5 + (perfectBonus > 0 ? 5 : 0);
 
@@ -341,6 +413,8 @@ export function recordLessonCompletion(
     streak: nextStreak,
     lastActiveDay: input.today,
     lessonsCompletedToday: synced.lessonsCompletedToday + 1,
+    perfectLessonsCount: synced.perfectLessonsCount + (accuracy === 100 ? 1 : 0),
+    xpBoostActive: false,
     completedNodes: {
       ...synced.completedNodes,
       [input.nodeId]: {
@@ -357,6 +431,7 @@ export function recordLessonCompletion(
     xpEarned,
     comboBonus,
     perfectBonus,
+    boosted,
     gemsEarned,
     accuracy,
     stars,
@@ -557,7 +632,7 @@ export function buildLearningPathUnits(
   return [dailyUnit, ...packUnits];
 }
 
-/** Resolves the vocabulary words targeted by a specific path node. */
+/** Resolves the vocabulary words targeted by a specific path node (core or bonus track). */
 export function wordsForPathNode(
   node: Pick<PathNode, "packId" | "wordRange">,
   dailyWords: readonly VocabularyWord[],
@@ -568,9 +643,244 @@ export function wordsForPathNode(
     const sliced = dailyWords.slice(start, end);
     return sliced.length >= 4 ? sliced : [...dailyWords];
   }
+  const isBonus =
+    node.packId === "cloud_devops" || node.packId === "data_apis" || node.packId === "code_review";
+  if (isBonus) {
+    const bonusWords = ALL_STUDIO_VOCABULARY.filter((w) => w.pack === node.packId);
+    const sliced = bonusWords.slice(start, end);
+    return asGeneratorWords(sliced.length >= 4 ? sliced : bonusWords.slice(0, 8));
+  }
   const packWords = allVocabulary.filter((w) => w.pack === node.packId);
   const sliced = packWords.slice(start, end);
   return sliced.length >= 4 ? sliced : packWords.slice(0, 8);
+}
+
+/** Builds the 3 bonus engineering units (Cloud & DevOps, Data & APIs, Code Review). */
+export function buildBonusPathUnits(
+  completedNodes: Readonly<Record<string, NodeCompletion>>,
+): LearningPathUnit[] {
+  return BONUS_VOCABULARY_PACKS.map((pack, idx) => {
+    const unitId = `unit-bonus-${pack.id}`;
+    const packId: BonusPackId = pack.id;
+    const defs = [
+      {
+        id: `bonus:${pack.id}:lesson-1`,
+        kind: "warmup" as PathNodeKind,
+        title: `${pack.label} · Bases`,
+        subtitle: "Découverte des termes clés + écoute audio",
+        xpReward: 25,
+        wordRange: [0, 8] as const,
+      },
+      {
+        id: `bonus:${pack.id}:lesson-2`,
+        kind: "word_bank" as PathNodeKind,
+        title: `${pack.label} · Phrases`,
+        subtitle: "Construction de phrases techniques en contexte",
+        xpReward: 25,
+        wordRange: [8, 16] as const,
+      },
+      {
+        id: `bonus:${pack.id}:lesson-3`,
+        kind: "match_pairs" as PathNodeKind,
+        title: `${pack.label} · Paires`,
+        subtitle: "Association rapide anglais / français",
+        xpReward: 25,
+        wordRange: [16, 24] as const,
+      },
+      {
+        id: `bonus:${pack.id}:lesson-4`,
+        kind: "listening" as PathNodeKind,
+        title: `${pack.label} · Dictée & Écoute`,
+        subtitle: "Compréhension orale et frappe libre",
+        xpReward: 30,
+        wordRange: [22, 30] as const,
+      },
+      {
+        id: `bonus:${pack.id}:checkpoint`,
+        kind: "checkpoint" as PathNodeKind,
+        title: `Trophée · ${pack.label}`,
+        subtitle: "Défi mixte + piège francophone sur toute l'unité",
+        xpReward: 40,
+        wordRange: [0, 30] as const,
+      },
+    ];
+
+    const nodes: PathNode[] = defs.map((def, nodeIdx) => {
+      const doneRecord = completedNodes[def.id];
+      const isDone = Boolean(doneRecord);
+      const prevDone = nodeIdx === 0 || Boolean(completedNodes[defs[nodeIdx - 1].id]);
+      const state: PathNode["state"] = isDone ? "completed" : prevDone ? "unlocked" : "locked";
+      return {
+        id: def.id,
+        unitId,
+        kind: def.kind,
+        title: def.title,
+        subtitle: def.subtitle,
+        xpReward: def.xpReward,
+        packId,
+        wordRange: def.wordRange,
+        state,
+        stars: doneRecord?.stars ?? 0,
+      };
+    });
+
+    return {
+      id: unitId,
+      unitNumber: idx + 7,
+      title: `Unité ${idx + 7} · ${pack.label}`,
+      subtitle: pack.subtitle,
+      level: pack.level,
+      packId,
+      theme: pack.theme,
+      completedCount: nodes.filter((n) => n.state === "completed").length,
+      totalCount: nodes.length,
+      masteredWords: nodes.filter((n) => n.state === "completed").length * 6,
+      totalWords: pack.entries.length,
+      nodes,
+    };
+  });
+}
+
+function advanceStreak(synced: GamificationState, today: DayKey): number {
+  const alreadyActiveToday = synced.lastActiveDay === today;
+  if (alreadyActiveToday) return Math.max(1, synced.streak);
+  return synced.lastActiveDay === previousDayKey(today) ? synced.streak + 1 : 1;
+}
+
+/** Records completion of an interactive Engineering Story and grants XP + gems. */
+export function recordStoryCompletion(
+  currentState: GamificationState,
+  input: Readonly<{ storyId: string; xpReward: number; today: DayKey }>,
+): Readonly<{ state: GamificationState; xpEarned: number; gemsEarned: number; boosted: boolean }> {
+  const synced = syncGamificationDay(currentState, input.today);
+  const firstTime = !synced.completedStoryIds.includes(input.storyId);
+  const boosted = synced.xpBoostActive;
+  const xpEarned = boosted ? input.xpReward * 2 : input.xpReward;
+  const gemsEarned = firstTime ? 15 : 5;
+
+  const nextState: GamificationState = {
+    ...synced,
+    xp: synced.xp + xpEarned,
+    todayXp: synced.todayXp + xpEarned,
+    gems: synced.gems + gemsEarned,
+    streak: advanceStreak(synced, input.today),
+    lastActiveDay: input.today,
+    lessonsCompletedToday: synced.lessonsCompletedToday + 1,
+    xpBoostActive: false,
+    completedStoryIds: firstTime
+      ? [...synced.completedStoryIds, input.storyId]
+      : synced.completedStoryIds,
+  };
+  return { state: nextState, xpEarned, gemsEarned, boosted };
+}
+
+/** Records a 60-second Speed Blitz run, updating personal best and awarding XP + gems. */
+export function recordBlitzRun(
+  currentState: GamificationState,
+  input: Readonly<{ score: number; today: DayKey }>,
+): Readonly<{ state: GamificationState; xpEarned: number; gemsEarned: number; isNewBest: boolean }> {
+  const synced = syncGamificationDay(currentState, input.today);
+  const safeScore = Math.max(0, Math.floor(input.score));
+  const rawXp = Math.min(45, Math.max(5, safeScore * 2));
+  const xpEarned = synced.xpBoostActive ? rawXp * 2 : rawXp;
+  const gemsEarned = Math.min(20, Math.floor(safeScore / 2) * 2);
+  const isNewBest = safeScore > synced.bestBlitzScore;
+
+  const nextState: GamificationState = {
+    ...synced,
+    xp: synced.xp + xpEarned,
+    todayXp: synced.todayXp + xpEarned,
+    gems: synced.gems + gemsEarned,
+    streak: advanceStreak(synced, input.today),
+    lastActiveDay: input.today,
+    bestBlitzScore: Math.max(synced.bestBlitzScore, safeScore),
+    xpBoostActive: false,
+  };
+  return { state: nextState, xpEarned, gemsEarned, isNewBest };
+}
+
+/** Increments grammar drill completion counter (called alongside lesson rewards). */
+export function markGrammarDrillCompleted(currentState: GamificationState): GamificationState {
+  return {
+    ...currentState,
+    grammarDrillsCompleted: currentState.grammarDrillsCompleted + 1,
+  };
+}
+
+export type ShopPurchaseResult =
+  | Readonly<{ ok: true; state: GamificationState; message: string }>
+  | Readonly<{ ok: false; state: GamificationState; reason: string }>;
+
+/** Purchases a consumable boost or mascot accessory with local gems. */
+export function purchaseShopItem(
+  currentState: GamificationState,
+  itemId: ShopItemId,
+): ShopPurchaseResult {
+  const item = STUDIO_SHOP_ITEMS.find((entry) => entry.id === itemId);
+  if (!item) return { ok: false, state: currentState, reason: "Article introuvable." };
+
+  if (item.kind === "accessory" && currentState.ownedAccessories.includes(item.id as MascotAccessoryId)) {
+    return { ok: false, state: currentState, reason: "Accessoire déjà débloqué." };
+  }
+  if (item.id === "streak_freeze" && currentState.streakFreezes >= 5) {
+    return { ok: false, state: currentState, reason: "Tu possèdes déjà le maximum de 5 gels de série." };
+  }
+  if (item.id === "xp_boost" && currentState.xpBoostActive) {
+    return { ok: false, state: currentState, reason: "Un boost XP ×2 est déjà actif !" };
+  }
+  if (item.id === "heart_refill" && currentState.hearts >= MAX_HEARTS) {
+    return { ok: false, state: currentState, reason: "Tes cœurs sont déjà au maximum." };
+  }
+  if (currentState.gems < item.costGems) {
+    return { ok: false, state: currentState, reason: `Il te manque ${item.costGems - currentState.gems} gemmes.` };
+  }
+
+  const remainingGems = currentState.gems - item.costGems;
+  if (item.id === "streak_freeze") {
+    return {
+      ok: true,
+      state: { ...currentState, gems: remainingGems, streakFreezes: currentState.streakFreezes + 1 },
+      message: "Gel de série ajouté ! Ta série est protégée.",
+    };
+  }
+  if (item.id === "xp_boost") {
+    return {
+      ok: true,
+      state: { ...currentState, gems: remainingGems, xpBoostActive: true },
+      message: "Boost XP ×2 activé pour ta prochaine activité !",
+    };
+  }
+  if (item.id === "heart_refill") {
+    return {
+      ok: true,
+      state: { ...currentState, gems: remainingGems, hearts: MAX_HEARTS },
+      message: "Tes 5 cœurs sont rechargés !",
+    };
+  }
+
+  const accessoryId = item.id as MascotAccessoryId;
+  return {
+    ok: true,
+    state: {
+      ...currentState,
+      gems: remainingGems,
+      ownedAccessories: [...currentState.ownedAccessories, accessoryId],
+      equippedAccessory: accessoryId,
+    },
+    message: `${item.name} débloqué et équipé sur Bit !`,
+  };
+}
+
+/** Equips or unequips an already-owned mascot accessory. */
+export function equipMascotAccessory(
+  currentState: GamificationState,
+  accessoryId: MascotAccessoryId | null,
+): GamificationState {
+  if (accessoryId === null) {
+    return { ...currentState, equippedAccessory: null };
+  }
+  if (!currentState.ownedAccessories.includes(accessoryId)) return currentState;
+  return { ...currentState, equippedAccessory: accessoryId };
 }
 
 /** Computes the 3 real daily quests shown in the side panel. */
