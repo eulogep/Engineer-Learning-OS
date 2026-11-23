@@ -12,32 +12,39 @@ export type TactileVariant =
   | "secondary"
   | "danger"
   | "outline"
-  | "ghost";
+  | "ghost"
+  | "reward";
 export type TactileSize = "sm" | "md" | "lg";
+
+/**
+ * Calm by default: one filled accent (primary), quiet secondary actions, and
+ * colour reserved for errors (danger) and reward moments (reward).
+ * info / warning / accent / secondary are kept as aliases of the quiet style
+ * so existing call sites stay valid.
+ */
+const QUIET =
+  "bg-white text-[#1E293B] border border-[#CBD5E1] shadow-[0_1px_0_#CBD5E1] hover:bg-[#F8FAFC] hover:border-[#94A3B8] active:translate-y-px";
 
 const VARIANT_CLASSES: Record<TactileVariant, string> = {
   primary:
-    "bg-[#059669] text-white border-[#047857] shadow-[0_4px_0_#047857] hover:bg-[#10B981] active:shadow-none active:translate-y-[4px]",
-  info:
-    "bg-[#6366F1] text-white border-[#4338CA] shadow-[0_4px_0_#4338CA] hover:bg-[#818CF8] active:shadow-none active:translate-y-[4px]",
-  warning:
-    "bg-[#F97316] text-white border-[#C2410C] shadow-[0_4px_0_#C2410C] hover:bg-[#FB923C] active:shadow-none active:translate-y-[4px]",
-  accent:
-    "bg-[#A855F7] text-white border-[#7E22CE] shadow-[0_4px_0_#7E22CE] hover:bg-[#C084FC] active:shadow-none active:translate-y-[4px]",
-  secondary:
-    "bg-[#06B6D4] text-white border-[#0E7490] shadow-[0_4px_0_#0E7490] hover:bg-[#22D3EE] active:shadow-none active:translate-y-[4px]",
+    "bg-[#059669] text-white border border-[#047857] shadow-[0_2px_0_#047857] hover:bg-[#047857] active:shadow-none active:translate-y-[2px]",
+  info: QUIET,
+  warning: QUIET,
+  accent: QUIET,
+  secondary: QUIET,
   danger:
-    "bg-[#F43F5E] text-white border-[#E11D48] shadow-[0_4px_0_#E11D48] hover:bg-[#FB7185] active:shadow-none active:translate-y-[4px]",
-  outline:
-    "bg-white text-[#6366F1] border-2 border-[#E2E8F0] shadow-[0_4px_0_#E2E8F0] hover:bg-[#F8FAFC] active:shadow-none active:translate-y-[4px]",
+    "bg-[#E11D48] text-white border border-[#BE123C] shadow-[0_2px_0_#BE123C] hover:bg-[#BE123C] active:shadow-none active:translate-y-[2px]",
+  outline: QUIET,
   ghost:
-    "bg-transparent text-[#64748B] border-transparent shadow-none hover:bg-[#F8FAFC] hover:text-[#1E293B]",
+    "bg-transparent text-[#64748B] border-transparent shadow-none hover:bg-[#F1F5F9] hover:text-[#1E293B]",
+  reward:
+    "bg-gradient-to-r from-[#F59E0B] via-[#F97316] to-[#EC4899] text-white border border-[#C2410C] shadow-[0_3px_0_#C2410C] hover:brightness-110 active:shadow-none active:translate-y-[3px]",
 };
 
 const SIZE_CLASSES: Record<TactileSize, string> = {
-  sm: "h-10 px-4 text-xs tracking-wider rounded-xl",
-  md: "h-12 px-5 text-sm tracking-wide rounded-2xl",
-  lg: "h-14 px-6 text-sm sm:text-base tracking-wide rounded-2xl",
+  sm: "h-9 px-3.5 text-xs rounded-xl",
+  md: "h-11 px-5 text-sm rounded-xl",
+  lg: "h-12 px-6 text-sm sm:text-base rounded-2xl",
 };
 
 interface TactileButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -51,7 +58,7 @@ interface TactileButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function TactileButton({
   variant = "primary",
   size = "md",
-  uppercase = true,
+  uppercase = false,
   className,
   disabled,
   children,
@@ -62,8 +69,8 @@ export function TactileButton({
       type="button"
       disabled={disabled}
       className={cn(
-        "inline-flex cursor-pointer select-none items-center justify-center gap-2 font-extrabold transition-[transform,box-shadow,background-color] duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2",
-        uppercase && "uppercase",
+        "inline-flex cursor-pointer select-none items-center justify-center gap-2 font-semibold transition-[transform,box-shadow,background-color] duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2",
+        uppercase && "uppercase tracking-wide",
         SIZE_CLASSES[size],
         disabled
           ? "cursor-not-allowed bg-[#E2E8F0] text-[#94A3B8] border-[#E2E8F0] shadow-none translate-y-0"
@@ -83,13 +90,13 @@ interface GlossyProgressBarProps {
   className?: string;
 }
 
-/** Rounded glossy lesson progress bar with spring fill and combo glow. */
+/** Slim progress bar; it only lights up in colour during a combo streak. */
 export function GlossyProgressBar({ value, combo = 0, className }: GlossyProgressBarProps) {
   const clamped = Math.max(0, Math.min(100, value));
   const hotCombo = combo >= 3;
   return (
     <div
-      className={cn("relative h-4 w-full overflow-hidden rounded-full bg-[#E2E8F0]", className)}
+      className={cn("relative h-2.5 w-full overflow-hidden rounded-full bg-[#E2E8F0]", className)}
       role="progressbar"
       aria-valuenow={Math.round(clamped)}
       aria-valuemin={0}
@@ -104,7 +111,6 @@ export function GlossyProgressBar({ value, combo = 0, className }: GlossyProgres
         animate={{ width: `${Math.max(clamped > 0 ? 7 : 0, clamped)}%` }}
         transition={{ type: "spring", stiffness: 260, damping: 28 }}
       >
-        <div className="mx-2 mt-1 h-1.5 rounded-full bg-white/35" />
       </motion.div>
     </div>
   );

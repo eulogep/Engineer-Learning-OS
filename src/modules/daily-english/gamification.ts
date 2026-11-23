@@ -909,7 +909,7 @@ export function buildDailyQuests(
     },
     {
       id: "quest-mission",
-      title: "Valider la Mission orale du jour",
+      title: "Valider l'oral guidé du jour",
       current: missionCompletedToday ? 1 : 0,
       target: 1,
       rewardGems: 30,

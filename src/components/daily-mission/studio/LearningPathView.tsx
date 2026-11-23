@@ -68,45 +68,45 @@ const THEME_STYLES: Record<
 > = {
   emerald: {
     banner: "bg-[#059669]",
-    bannerShadow: "shadow-[0_4px_0_#047857]",
+    bannerShadow: "",
     nodeBg: "bg-[#059669]",
-    nodeShadow: "shadow-[0_6px_0_#047857]",
+    nodeShadow: "",
     ring: "border-[#059669]",
     badge: "bg-[#047857] text-white",
     ctaVariant: "primary",
   },
   indigo: {
     banner: "bg-[#6366F1]",
-    bannerShadow: "shadow-[0_4px_0_#4338CA]",
+    bannerShadow: "",
     nodeBg: "bg-[#6366F1]",
-    nodeShadow: "shadow-[0_6px_0_#4338CA]",
+    nodeShadow: "",
     ring: "border-[#6366F1]",
     badge: "bg-[#4338CA] text-white",
     ctaVariant: "info",
   },
   violet: {
     banner: "bg-[#A855F7]",
-    bannerShadow: "shadow-[0_4px_0_#7E22CE]",
+    bannerShadow: "",
     nodeBg: "bg-[#A855F7]",
-    nodeShadow: "shadow-[0_6px_0_#7E22CE]",
+    nodeShadow: "",
     ring: "border-[#A855F7]",
     badge: "bg-[#7E22CE] text-white",
     ctaVariant: "accent",
   },
   orange: {
     banner: "bg-[#F97316]",
-    bannerShadow: "shadow-[0_4px_0_#C2410C]",
+    bannerShadow: "",
     nodeBg: "bg-[#F97316]",
-    nodeShadow: "shadow-[0_6px_0_#C2410C]",
+    nodeShadow: "",
     ring: "border-[#F97316]",
     badge: "bg-[#C2410C] text-white",
     ctaVariant: "warning",
   },
   cyan: {
     banner: "bg-[#06B6D4]",
-    bannerShadow: "shadow-[0_4px_0_#0E7490]",
+    bannerShadow: "",
     nodeBg: "bg-[#06B6D4]",
-    nodeShadow: "shadow-[0_6px_0_#0E7490]",
+    nodeShadow: "",
     ring: "border-[#06B6D4]",
     badge: "bg-[#0E7490] text-white",
     ctaVariant: "secondary",
@@ -171,32 +171,32 @@ export function LearningPathView({
   return (
     <div className="elos-studio space-y-6">
       {/* Top sticky Gamification HUD */}
-      <div className="sticky top-16 z-20 rounded-2xl border-2 border-[#E2E8F0] bg-white/95 px-4 py-3 shadow-sm backdrop-blur-md">
+      <div className="sticky top-16 z-20 rounded-2xl border border-[#E2E8F0] bg-white/95 px-4 py-3 shadow-sm backdrop-blur-md">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Stats strip: Streak, XP, Gems, Hearts */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div
-              className="flex items-center gap-1.5 rounded-xl border-2 border-[#FFEDD5] bg-[#FFEDD5]/70 px-3 py-1.5"
+              className="flex items-center gap-1.5 rounded-xl border border-[#FFEDD5] bg-[#FFEDD5]/70 px-3 py-1.5"
               title="Série de jours actifs"
             >
               <Flame className="h-4 w-4 fill-[#F97316] text-[#F97316]" />
-              <span className="text-sm font-black text-[#C2410C]">{effectiveStreak}</span>
+              <span className="text-sm font-bold text-[#C2410C]">{effectiveStreak}</span>
             </div>
 
             <div
-              className="flex items-center gap-1.5 rounded-xl border-2 border-[#FFEDD5] bg-[#FFF7ED] px-3 py-1.5"
+              className="flex items-center gap-1.5 rounded-xl border border-[#FFEDD5] bg-[#FFF7ED] px-3 py-1.5"
               title={`Objectif du jour : ${gamification.todayXp}/${gamification.onboarding.dailyGoalXp} XP`}
             >
               <Star className="h-4 w-4 fill-[#FBBF24] text-[#FBBF24]" />
-              <span className="text-sm font-black text-[#B45309]">{gamification.xp} XP</span>
+              <span className="text-sm font-bold text-[#B45309]">{gamification.xp} XP</span>
             </div>
 
             <div
-              className="flex items-center gap-1.5 rounded-xl border-2 border-[#E0E7FF] bg-[#EEF2FF] px-3 py-1.5"
+              className="flex items-center gap-1.5 rounded-xl border border-[#E0E7FF] bg-[#EEF2FF] px-3 py-1.5"
               title="Gemmes gagnées"
             >
               <Gem className="h-4 w-4 fill-[#6366F1] text-[#4338CA]" />
-              <span className="text-sm font-black text-[#4338CA]">{gamification.gems}</span>
+              <span className="text-sm font-bold text-[#4338CA]">{gamification.gems}</span>
             </div>
 
             <button
@@ -207,7 +207,7 @@ export function LearningPathView({
                   onRefillHearts();
                 }
               }}
-              className={`flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 transition-colors ${
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 transition-colors ${
                 gamification.hearts === 0
                   ? "cursor-pointer border-[#F43F5E] bg-[#FFE4E6] hover:bg-[#FECDD3]"
                   : "border-[#FFE4E6] bg-[#FFF1F2]"
@@ -219,11 +219,11 @@ export function LearningPathView({
               }
             >
               <Heart className="h-4 w-4 fill-[#F43F5E] text-[#F43F5E]" />
-              <span className="text-sm font-black text-[#E11D48]">
+              <span className="text-sm font-bold text-[#E11D48]">
                 {gamification.hearts}/{MAX_HEARTS}
               </span>
               {gamification.hearts < MAX_HEARTS && (
-                <span className="text-[10px] font-extrabold uppercase text-[#E11D48]">+ Recharger</span>
+                <span className="text-[10px] font-semibold uppercase text-[#E11D48]">+ Recharger</span>
               )}
             </button>
           </div>
@@ -236,7 +236,7 @@ export function LearningPathView({
                 playTapSound(!soundEnabled);
                 onToggleSound();
               }}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-2 border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]"
               aria-label={soundEnabled ? "Couper les sons" : "Activer les sons"}
               title={soundEnabled ? "Sons activés" : "Sons coupés"}
             >
@@ -248,23 +248,12 @@ export function LearningPathView({
                 playTapSound(soundEnabled);
                 onOpenOnboarding();
               }}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border-2 border-[#E2E8F0] bg-white px-3 text-xs font-extrabold text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 text-xs font-semibold text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]"
               title="Objectif XP & thème prioritaire"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Objectif</span>
             </button>
-            <TactileButton
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                playTapSound(soundEnabled);
-                onOpenGuidedMission();
-              }}
-            >
-              <Mic className="h-3.5 w-3.5" />
-              Mission 6 étapes
-            </TactileButton>
           </div>
         </div>
       </div>
@@ -281,7 +270,7 @@ export function LearningPathView({
                 {isFirstBonus && (
                   <div className="flex items-center gap-3 pt-2">
                     <div className="h-0.5 flex-1 bg-[#E2E8F0]" />
-                    <span className="rounded-xl border-2 border-[#C7D2FE] bg-[#EEF2FF] px-3.5 py-1 text-xs font-black uppercase tracking-wider text-[#4338CA]">
+                    <span className="rounded-xl border border-[#C7D2FE] bg-[#EEF2FF] px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#4338CA]">
                       Parcours Avancé Ingénieur (+90 termes B2–C1)
                     </span>
                     <div className="h-0.5 flex-1 bg-[#E2E8F0]" />
@@ -289,7 +278,7 @@ export function LearningPathView({
                 )}
               <section
                 aria-label={unit.title}
-                className="overflow-visible rounded-3xl border-2 border-[#E2E8F0] bg-white pb-8 shadow-sm"
+                className="overflow-visible rounded-3xl border border-[#E2E8F0] bg-white pb-8 shadow-sm"
               >
                 {/* Unit Banner Header */}
                 <div
@@ -297,14 +286,14 @@ export function LearningPathView({
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-lg bg-black/15 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider">
+                      <span className="rounded-lg bg-black/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider">
                         {unit.level}
                       </span>
                       <span className="text-xs font-bold text-white/90">
                         {unit.completedCount}/{unit.totalCount} étapes
                       </span>
                     </div>
-                    <h2 className="text-lg font-black tracking-tight sm:text-xl">{unit.title}</h2>
+                    <h2 className="text-lg font-bold tracking-tight sm:text-xl">{unit.title}</h2>
                     <p className="text-xs font-semibold text-white/90">{unit.subtitle}</p>
                   </div>
 
@@ -314,7 +303,7 @@ export function LearningPathView({
                       playTapSound(soundEnabled);
                       setGuideUnitId(unit.id);
                     }}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border-2 border-white/30 bg-black/10 px-3 py-2 text-xs font-extrabold uppercase tracking-wider text-white transition-colors hover:bg-black/20"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/30 bg-black/10 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-black/20"
                   >
                     <BookOpen className="h-4 w-4" />
                     Guide
@@ -353,7 +342,7 @@ export function LearningPathView({
                           <motion.div
                             animate={{ y: [0, -5, 0] }}
                             transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                            className="mb-2 rounded-xl border-2 border-[#E2E8F0] bg-white px-3 py-1 text-xs font-black uppercase tracking-wider text-[#059669] shadow-sm"
+                            className="mb-2 rounded-xl border border-[#E2E8F0] bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#059669] shadow-sm"
                           >
                             Commencer
                           </motion.div>
@@ -377,9 +366,9 @@ export function LearningPathView({
                             aria-label={`${node.title} (${isLocked ? "verrouillé" : isCompleted ? "terminé" : "disponible"})`}
                             className={`relative flex h-[74px] w-[74px] items-center justify-center rounded-full border-4 transition-transform duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 ${
                               isLocked
-                                ? "cursor-not-allowed border-[#E2E8F0] bg-[#E2E8F0] text-[#94A3B8] shadow-[0_6px_0_#CBD5E1]"
+                                ? "cursor-not-allowed border-[#E2E8F0] bg-[#E2E8F0] text-[#94A3B8]"
                                 : isCompleted
-                                  ? "cursor-pointer border-[#FDE68A] bg-[#FBBF24] text-white shadow-[0_6px_0_#D97706] active:translate-y-[4px] active:shadow-none"
+                                  ? "cursor-pointer border-[#FDE68A] bg-[#FBBF24] text-white active:translate-y-[4px] active:shadow-none"
                                   : `cursor-pointer border-white/40 text-white ${theme.nodeBg} ${theme.nodeShadow} active:translate-y-[4px] active:shadow-none`
                             }`}
                           >
@@ -409,7 +398,7 @@ export function LearningPathView({
                           )}
                         </div>
 
-                        <p className="mt-1.5 max-w-[160px] text-center text-xs font-extrabold text-[#334155]">
+                        <p className="mt-1.5 max-w-[160px] text-center text-xs font-semibold text-[#334155]">
                           {node.title}
                         </p>
 
@@ -421,12 +410,12 @@ export function LearningPathView({
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: -6, scale: 0.96 }}
                               transition={{ duration: 0.16 }}
-                              className="z-30 mt-3 w-72 rounded-2xl border-2 border-[#E2E8F0] bg-white p-4 text-left shadow-xl"
+                              className="z-30 mt-3 w-72 rounded-2xl border border-[#E2E8F0] bg-white p-4 text-left shadow-xl"
                               style={{ transform: `translateX(${-offset * 0.5}px)` }}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div>
-                                  <p className="text-sm font-black text-[#1E293B]">{node.title}</p>
+                                  <p className="text-sm font-bold text-[#1E293B]">{node.title}</p>
                                   <p className="mt-0.5 text-xs leading-5 text-[#64748B]">{node.subtitle}</p>
                                 </div>
                                 <button
@@ -470,12 +459,12 @@ export function LearningPathView({
         {/* Right Sidebar: Daily Goal, Quests, Real Spaced-Review Stats & Roleplay */}
         <aside className="space-y-4 lg:sticky lg:top-36">
           {/* Daily XP Goal card */}
-          <div className="rounded-2xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black uppercase tracking-wide text-[#1E293B]">
+              <h3 className="text-sm font-bold text-[#1E293B]">
                 Objectif du jour
               </h3>
-              <span className="text-xs font-extrabold text-[#047857]">
+              <span className="text-xs font-semibold text-[#047857]">
                 {gamification.todayXp}/{gamification.onboarding.dailyGoalXp} XP
               </span>
             </div>
@@ -489,8 +478,8 @@ export function LearningPathView({
           </div>
 
           {/* Quêtes du jour */}
-          <div className="rounded-2xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-black uppercase tracking-wide text-[#1E293B]">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-[#1E293B]">
               Quêtes du jour
             </h3>
             <div className="mt-3 space-y-3.5">
@@ -500,7 +489,7 @@ export function LearningPathView({
                   <div key={quest.id} className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2 text-xs font-bold text-[#334155]">
                       <span className={quest.completed ? "text-[#047857]" : ""}>{quest.title}</span>
-                      <span className="flex shrink-0 items-center gap-2 font-extrabold text-[#64748B]">
+                      <span className="flex shrink-0 items-center gap-2 font-semibold text-[#64748B]">
                         {quest.current}/{quest.target}
                         <span
                           className={`inline-flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-[11px] ${
@@ -538,20 +527,20 @@ export function LearningPathView({
           </div>
 
           {/* Real Spaced-Review Mastery Card */}
-          <div className="rounded-2xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-black uppercase tracking-wide text-[#1E293B]">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-[#1E293B]">
               Maîtrise Leitner
             </h3>
             <div className="mt-3 grid grid-cols-2 gap-2.5">
               <div className="rounded-xl bg-[#F8FAFC] p-3 text-center">
-                <p className="text-xl font-black text-[#1E293B]">
+                <p className="text-xl font-bold text-[#1E293B]">
                   {progressSummary?.seen ?? 0}
                   <span className="text-xs font-bold text-[#94A3B8]">/{progressSummary?.total ?? 150}</span>
                 </p>
                 <p className="text-[11px] font-bold text-[#64748B]">Mots travaillés</p>
               </div>
               <div className="rounded-xl bg-[#D1FAE5]/60 p-3 text-center">
-                <p className="text-xl font-black text-[#047857]">{progressSummary?.mastered ?? 0}</p>
+                <p className="text-xl font-bold text-[#047857]">{progressSummary?.mastered ?? 0}</p>
                 <p className="text-[11px] font-bold text-[#047857]">Maîtrisés (30j+)</p>
               </div>
             </div>
@@ -566,11 +555,11 @@ export function LearningPathView({
                 }}
               >
                 <Mic className="h-4 w-4" />
-                Mission complète (6 étapes)
+                Oral guidé (6 étapes)
               </TactileButton>
               <Link
                 href="/daily-english/roleplay"
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#E2E8F0] bg-white text-xs font-extrabold uppercase tracking-wider text-[#334155] shadow-[0_3px_0_#E2E8F0] transition-colors hover:bg-[#F8FAFC]"
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white text-xs font-semibold text-[#334155] transition-colors hover:bg-[#F8FAFC]"
               >
                 Jeux de rôle oraux →
               </Link>
@@ -594,12 +583,12 @@ export function LearningPathView({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.94, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="max-h-[82vh] w-full max-w-lg overflow-hidden rounded-3xl border-2 border-[#E2E8F0] bg-white shadow-2xl"
+              className="max-h-[82vh] w-full max-w-lg overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white shadow-2xl"
             >
-              <div className="flex items-center justify-between border-b-2 border-[#E2E8F0] px-5 py-4">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] px-5 py-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wider text-[#6366F1]">Guide d&apos;unité</p>
-                  <h3 className="text-lg font-black text-[#1E293B]">{guideUnit.title}</h3>
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#6366F1]">Guide d&apos;unité</p>
+                  <h3 className="text-lg font-bold text-[#1E293B]">{guideUnit.title}</h3>
                 </div>
                 <button
                   type="button"
@@ -614,11 +603,11 @@ export function LearningPathView({
                 {guideWords.map((item) => (
                   <div
                     key={item.word}
-                    className="flex items-start justify-between gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/50 p-3.5"
+                    className="flex items-start justify-between gap-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/50 p-3.5"
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-base font-black text-[#1E293B]">{item.word}</span>
+                        <span className="text-base font-bold text-[#1E293B]">{item.word}</span>
                         <span className="rounded-lg bg-white px-2 py-0.5 text-[11px] font-bold text-[#64748B]">
                           {item.category}
                         </span>
@@ -629,7 +618,7 @@ export function LearningPathView({
                     <button
                       type="button"
                       onClick={() => speakEnglish(item.word)}
-                      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl border-2 border-[#E0E7FF] bg-[#E0E7FF] text-[#4338CA] shadow-[0_3px_0_#4338CA] active:translate-y-[2px] active:shadow-none"
+                      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl border border-[#E0E7FF] bg-[#E0E7FF] text-[#4338CA] active:translate-y-[2px] active:shadow-none"
                       aria-label={`Écouter ${item.word}`}
                     >
                       <Volume2 className="h-4 w-4" />

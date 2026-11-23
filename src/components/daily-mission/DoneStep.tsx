@@ -141,7 +141,7 @@ export function DoneStep() {
               Mission terminée !
             </h2>
             <p className="text-sm text-stone-500">
-              Bravo ! Vous avez complété votre Daily English Mission du jour.
+              Bravo ! Vous avez terminé l’oral guidé du jour.
             </p>
           </div>
 

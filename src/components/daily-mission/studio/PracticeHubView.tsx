@@ -102,12 +102,12 @@ export function PracticeHubView({
     <div className="elos-studio space-y-6">
       {/* 3 Arcade & Targeted Practice Launchers */}
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="flex flex-col justify-between rounded-3xl border-2 border-[#FED7AA] bg-gradient-to-br from-[#FFF7ED] to-white p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-3xl border border-[#FED7AA] bg-gradient-to-br from-[#FFF7ED] to-white p-5 shadow-sm">
           <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#FFEDD5] px-2.5 py-1 text-[11px] font-black uppercase text-[#C2410C]">
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#FFEDD5] px-2.5 py-1 text-[11px] font-bold uppercase text-[#C2410C]">
               <Timer className="h-3.5 w-3.5" /> Arcade 60s
             </span>
-            <h3 className="text-lg font-black text-[#1E293B]">Match Éclair</h3>
+            <h3 className="text-lg font-bold text-[#1E293B]">Match Éclair</h3>
             <p className="text-xs leading-5 text-[#64748B]">
               Traduire un maximum de termes ingénieur en 60 secondes. Record :{" "}
               <strong className="text-[#C2410C]">{bestBlitzScore}</strong>.
@@ -127,12 +127,12 @@ export function PracticeHubView({
           </TactileButton>
         </div>
 
-        <div className="flex flex-col justify-between rounded-3xl border-2 border-[#E9D5FF] bg-gradient-to-br from-[#FAF5FF] to-white p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-3xl border border-[#E9D5FF] bg-gradient-to-br from-[#FAF5FF] to-white p-5 shadow-sm">
           <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#F3E8FF] px-2.5 py-1 text-[11px] font-black uppercase text-[#7E22CE]">
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#F3E8FF] px-2.5 py-1 text-[11px] font-bold uppercase text-[#7E22CE]">
               <AlertTriangle className="h-3.5 w-3.5" /> 16 pièges clés
             </span>
-            <h3 className="text-lg font-black text-[#1E293B]">Chasse aux Faux-Amis</h3>
+            <h3 className="text-lg font-bold text-[#1E293B]">Chasse aux Faux-Amis</h3>
             <p className="text-xs leading-5 text-[#64748B]">
               Corrige les erreurs typiques des francophones + dictée active. Sessions :{" "}
               <strong className="text-[#7E22CE]">{grammarDrillsCompleted}</strong>.
@@ -152,12 +152,12 @@ export function PracticeHubView({
           </TactileButton>
         </div>
 
-        <div className="flex flex-col justify-between rounded-3xl border-2 border-[#A7F3D0] bg-gradient-to-br from-[#ECFDF5] to-white p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-3xl border border-[#A7F3D0] bg-gradient-to-br from-[#ECFDF5] to-white p-5 shadow-sm">
           <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#D1FAE5] px-2.5 py-1 text-[11px] font-black uppercase text-[#047857]">
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#D1FAE5] px-2.5 py-1 text-[11px] font-bold uppercase text-[#047857]">
               <Layers className="h-3.5 w-3.5" /> Mix 240 mots
             </span>
-            <h3 className="text-lg font-black text-[#1E293B]">Révision Éclair</h3>
+            <h3 className="text-lg font-bold text-[#1E293B]">Révision Éclair</h3>
             <p className="text-xs leading-5 text-[#64748B]">
               Session mixte (écoute, frappe libre, banque de mots, piège francophone) sur tout le catalogue.
             </p>
@@ -179,11 +179,11 @@ export function PracticeHubView({
 
       {/* Sub-tabs: Grammar Lab vs 240-Word Flashcard Vault */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-2xl border-2 border-[#E2E8F0] bg-white p-1">
+        <div className="inline-flex rounded-2xl border border-[#E2E8F0] bg-white p-1">
           <button
             type="button"
             onClick={() => setSection("grammar")}
-            className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition-colors ${
+            className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-bold transition-colors ${
               section === "grammar"
                 ? "bg-[#6366F1] text-white"
                 : "text-[#64748B] hover:text-[#1E293B]"
@@ -194,7 +194,7 @@ export function PracticeHubView({
           <button
             type="button"
             onClick={() => setSection("vault")}
-            className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition-colors ${
+            className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-bold transition-colors ${
               section === "vault"
                 ? "bg-[#6366F1] text-white"
                 : "text-[#64748B] hover:text-[#1E293B]"
@@ -221,7 +221,7 @@ export function PracticeHubView({
                 key={cat}
                 type="button"
                 onClick={() => setTrapCategory(cat)}
-                className={`cursor-pointer rounded-xl border-2 px-3 py-1.5 text-xs font-extrabold transition-colors ${
+                className={`cursor-pointer rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
                   trapCategory === cat
                     ? "border-[#6366F1] bg-[#EEF2FF] text-[#4338CA]"
                     : "border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F8FAFC]"
@@ -236,14 +236,14 @@ export function PracticeHubView({
             {filteredTraps.map((trap) => (
               <div
                 key={trap.id}
-                className="rounded-3xl border-2 border-[#E2E8F0] bg-white p-5 shadow-sm space-y-3"
+                className="rounded-3xl border border-[#E2E8F0] bg-white p-5 shadow-sm space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="rounded-lg bg-[#F3E8FF] px-2 py-0.5 text-[11px] font-black text-[#7E22CE]">
+                    <span className="rounded-lg bg-[#F3E8FF] px-2 py-0.5 text-[11px] font-bold text-[#7E22CE]">
                       {trap.category}
                     </span>
-                    <h4 className="mt-1 text-base font-black text-[#1E293B]">{trap.title}</h4>
+                    <h4 className="mt-1 text-base font-bold text-[#1E293B]">{trap.title}</h4>
                   </div>
                   <button
                     type="button"
@@ -265,7 +265,7 @@ export function PracticeHubView({
                 </div>
 
                 <p className="text-xs leading-5 text-[#475569]">{trap.explanation}</p>
-                <p className="rounded-xl bg-[#F8FAFC] px-3 py-1.5 text-[11px] font-black text-[#4338CA]">
+                <p className="rounded-xl bg-[#F8FAFC] px-3 py-1.5 text-[11px] font-bold text-[#4338CA]">
                   💡 Mémo : {trap.mnemonic}
                 </p>
               </div>
@@ -277,7 +277,7 @@ export function PracticeHubView({
       {/* SECTION B: 240-Word Vault + Interactive Flashcards */}
       {section === "vault" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-white p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#E2E8F0] bg-white p-4">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
               <input
@@ -289,7 +289,7 @@ export function PracticeHubView({
                   setFlipped(false);
                 }}
                 placeholder="Rechercher un mot, une traduction ou un exemple…"
-                className="h-10 w-full rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] pl-9 pr-3 text-sm font-semibold text-[#1E293B] outline-none focus:border-[#6366F1] focus:bg-white"
+                className="h-10 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] pl-9 pr-3 text-sm font-semibold text-[#1E293B] outline-none focus:border-[#6366F1] focus:bg-white"
               />
             </div>
 
@@ -300,7 +300,7 @@ export function PracticeHubView({
                 setFlashcardMode((v) => !v);
                 setFlipped(false);
               }}
-              className={`inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl border-2 px-4 text-xs font-black uppercase tracking-wider transition-colors ${
+              className={`inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl border px-4 text-xs font-bold transition-colors ${
                 flashcardMode
                   ? "border-[#047857] bg-[#059669] text-white"
                   : "border-[#E2E8F0] bg-white text-[#334155] hover:bg-[#F8FAFC]"
@@ -321,7 +321,7 @@ export function PracticeHubView({
                   setCardIndex(0);
                   setFlipped(false);
                 }}
-                className={`cursor-pointer rounded-xl border-2 px-3 py-1 text-xs font-extrabold transition-colors ${
+                className={`cursor-pointer rounded-xl border px-3 py-1 text-xs font-semibold transition-colors ${
                   packFilter === pack.id
                     ? "border-[#059669] bg-[#D1FAE5] text-[#047857]"
                     : "border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F8FAFC]"
@@ -347,22 +347,22 @@ export function PracticeHubView({
                     setFlipped((f) => !f);
                   }
                 }}
-                className="flex min-h-[260px] cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-[#C7D2FE] bg-white p-8 text-center shadow-[0_6px_0_#E0E7FF] transition-transform active:translate-y-[2px]"
+                className="flex min-h-[260px] cursor-pointer flex-col items-center justify-center rounded-3xl border border-[#C7D2FE] bg-white p-8 text-center transition-transform active:translate-y-[2px]"
               >
-                <span className="rounded-xl bg-[#EEF2FF] px-3 py-1 text-xs font-black text-[#4338CA]">
+                <span className="rounded-xl bg-[#EEF2FF] px-3 py-1 text-xs font-bold text-[#4338CA]">
                   {activeCard.packLabel} · {activeCard.level} · {activeCard.category}
                 </span>
 
                 {!flipped ? (
                   <>
-                    <p className="mt-5 text-3xl font-black text-[#1E293B]">{activeCard.word}</p>
+                    <p className="mt-5 text-3xl font-bold text-[#1E293B]">{activeCard.word}</p>
                     <p className="mt-4 text-xs font-bold text-[#94A3B8]">
                       Clique pour révéler la traduction et l&apos;exemple
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="mt-4 text-2xl font-black text-[#047857]">
+                    <p className="mt-4 text-2xl font-bold text-[#047857]">
                       {activeCard.translation}
                     </p>
                     <p className="mt-3 max-w-md text-sm italic text-[#475569]">
@@ -378,14 +378,14 @@ export function PracticeHubView({
                   <button
                     type="button"
                     onClick={() => speakEnglish(activeCard.word)}
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-[#6366F1] px-3 text-xs font-extrabold text-white"
+                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-[#6366F1] px-3 text-xs font-semibold text-white"
                   >
                     <Volume2 className="h-4 w-4" /> Écouter
                   </button>
                   <button
                     type="button"
                     onClick={() => speakEnglish(activeCard.example, { slow: true })}
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border-2 border-[#E2E8F0] bg-white px-3 text-xs font-extrabold text-[#475569]"
+                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 text-xs font-semibold text-[#475569]"
                   >
                     <Turtle className="h-4 w-4" /> Exemple lent
                   </button>
@@ -403,7 +403,7 @@ export function PracticeHubView({
                 >
                   ← Précédent
                 </TactileButton>
-                <span className="text-xs font-black text-[#64748B]">
+                <span className="text-xs font-bold text-[#64748B]">
                   {(cardIndex % filteredWords.length) + 1} / {filteredWords.length}
                 </span>
                 <TactileButton
@@ -426,16 +426,16 @@ export function PracticeHubView({
                 return (
                   <div
                     key={`${item.pack}-${item.word}`}
-                    className="flex items-start justify-between gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-white p-4"
+                    className="flex items-start justify-between gap-3 rounded-2xl border border-[#E2E8F0] bg-white p-4"
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-base font-black text-[#1E293B]">{item.word}</span>
+                        <span className="text-base font-bold text-[#1E293B]">{item.word}</span>
                         <span className="rounded-lg bg-[#F8FAFC] px-2 py-0.5 text-[10px] font-bold text-[#64748B]">
                           {item.packLabel}
                         </span>
                         {status === "maitrise" && (
-                          <span className="inline-flex items-center gap-0.5 rounded-lg bg-[#D1FAE5] px-1.5 py-0.5 text-[10px] font-black text-[#047857]">
+                          <span className="inline-flex items-center gap-0.5 rounded-lg bg-[#D1FAE5] px-1.5 py-0.5 text-[10px] font-bold text-[#047857]">
                             <CheckCircle2 className="h-3 w-3" /> Maîtrisé
                           </span>
                         )}
@@ -455,7 +455,7 @@ export function PracticeHubView({
                 );
               })}
               {filteredWords.length === 0 && (
-                <div className="col-span-full rounded-2xl border-2 border-dashed border-[#E2E8F0] p-8 text-center">
+                <div className="col-span-full rounded-2xl border border-dashed border-[#E2E8F0] p-8 text-center">
                   <BookMarked className="mx-auto h-7 w-7 text-[#94A3B8]" />
                   <p className="mt-2 text-sm font-bold text-[#64748B]">
                     Aucun mot trouvé pour « {query} ».

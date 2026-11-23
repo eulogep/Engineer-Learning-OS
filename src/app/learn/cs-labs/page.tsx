@@ -3,12 +3,13 @@ import { CsEngineeringLabsStudio, type CsLabTab } from "@/components/cs-labs/CsE
 
 export const metadata: Metadata = { title: "Labs Ingénieur CYU" };
 
-function parseTab(value: string | string[] | undefined): CsLabTab {
+/** The requested tab, or undefined to let the labs open where the learner left off. */
+function parseTab(value: string | string[] | undefined): CsLabTab | undefined {
   const first = Array.isArray(value) ? value[0] : value;
   if (first === "networking" || first === "linux" || first === "sql" || first === "sae") {
     return first;
   }
-  return "networking";
+  return undefined;
 }
 
 export default async function CsLabsPage({

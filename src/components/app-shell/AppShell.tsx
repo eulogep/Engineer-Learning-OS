@@ -56,7 +56,7 @@ function Navigation({ pathname, horizontal = false }: { pathname: string; horizo
 }
 
 function pageLabel(pathname: string) {
-  if (pathname.startsWith("/daily-english")) return "Daily English Mission";
+  if (pathname.startsWith("/daily-english")) return "Daily English";
   if (pathname.startsWith("/learn/excel-csv")) return "Fiche mission";
   return navItems.find((item) => active(pathname, item.href))?.label ?? "Engineer Learning OS";
 }

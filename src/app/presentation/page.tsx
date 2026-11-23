@@ -31,7 +31,7 @@ export default function PresentationPage() {
 
       <div className="flex flex-wrap gap-3">
         <Link href="/" className="rounded-xl bg-emerald-800 px-5 py-3 font-semibold text-white hover:bg-emerald-900">Essayer maintenant</Link>
-        <Link href="/daily-english" className="rounded-xl border px-5 py-3 font-semibold hover:bg-slate-50">Daily English Mission</Link>
+        <Link href="/daily-english" className="rounded-xl border px-5 py-3 font-semibold hover:bg-slate-50">Daily English</Link>
         <a href="https://github.com/eulogep/Engineer-Learning-OS" className="rounded-xl border px-5 py-3 font-semibold hover:bg-slate-50">Code source</a>
       </div>
     </div>

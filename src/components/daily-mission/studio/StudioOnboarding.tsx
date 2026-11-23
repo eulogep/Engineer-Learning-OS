@@ -114,14 +114,14 @@ export function StudioOnboarding({
   const [dailyGoalXp, setDailyGoalXp] = useState<DailyGoalXp>(initialDailyGoal);
 
   return (
-    <div className="elos-studio overflow-hidden rounded-3xl border-2 border-[#E2E8F0] bg-white shadow-sm">
+    <div className="elos-studio overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white shadow-sm">
       {/* Top header bar */}
-      <div className="flex items-center justify-between border-b-2 border-[#E2E8F0] px-5 py-4 sm:px-8">
+      <div className="flex items-center justify-between border-b border-[#E2E8F0] px-5 py-4 sm:px-8">
         <div className="flex items-center gap-2.5">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#059669] text-white shadow-[0_3px_0_#047857]">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#059669] text-white">
             <Zap className="h-5 w-5 fill-white" />
           </span>
-          <span className="text-lg font-black tracking-tight text-[#059669]">
+          <span className="text-lg font-bold tracking-tight text-[#059669]">
             daily english
           </span>
         </div>
@@ -131,7 +131,7 @@ export function StudioOnboarding({
             playTapSound(soundEnabled);
             onOpenGuidedMission();
           }}
-          className="text-xs font-extrabold uppercase tracking-wider text-[#64748B] transition-colors hover:text-[#6366F1]"
+          className="text-xs font-semibold uppercase tracking-wider text-[#64748B] transition-colors hover:text-[#6366F1]"
         >
           Mode Mission 6 étapes →
         </button>
@@ -154,28 +154,28 @@ export function StudioOnboarding({
                 <div className="relative mx-auto flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72">
                   <div className="absolute inset-4 rounded-full bg-gradient-to-br from-[#D1FAE5]/80 via-[#E0E7FF]/60 to-[#FFEDD5]/70 blur-xl" />
                   <motion.span
-                    className="absolute left-1 top-6 rounded-2xl border-2 border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-extrabold text-[#4338CA] shadow-[0_3px_0_#E2E8F0]"
+                    className="absolute left-1 top-6 rounded-2xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#4338CA]"
                     animate={{ y: [0, -6, 0] }}
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                   >
                     🌐 Réseau B2
                   </motion.span>
                   <motion.span
-                    className="absolute right-0 top-12 rounded-2xl border-2 border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-extrabold text-[#6B21A8] shadow-[0_3px_0_#E2E8F0]"
+                    className="absolute right-0 top-12 rounded-2xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#6B21A8]"
                     animate={{ y: [0, 6, 0] }}
                     transition={{ duration: 3.3, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
                   >
                     🛡️ Cyber B2
                   </motion.span>
                   <motion.span
-                    className="absolute bottom-6 left-2 rounded-2xl border-2 border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-extrabold text-[#C2410C] shadow-[0_3px_0_#E2E8F0]"
+                    className="absolute bottom-6 left-2 rounded-2xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#C2410C]"
                     animate={{ y: [0, 5, 0] }}
                     transition={{ duration: 2.7, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
                   >
                     🔥 Série & XP
                   </motion.span>
                   <motion.span
-                    className="absolute bottom-4 right-2 rounded-2xl border-2 border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-extrabold text-[#047857] shadow-[0_3px_0_#E2E8F0]"
+                    className="absolute bottom-4 right-2 rounded-2xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#047857]"
                     animate={{ y: [0, -5, 0] }}
                     transition={{ duration: 3.1, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
                   >
@@ -186,7 +186,7 @@ export function StudioOnboarding({
 
                 {/* Right: Bold headline + stacked 3D CTAs */}
                 <div className="mx-auto max-w-md space-y-6 text-center lg:text-left">
-                  <h1 className="text-2xl font-black leading-tight tracking-tight text-[#1E293B] sm:text-3xl">
+                  <h1 className="text-2xl font-bold leading-tight tracking-tight text-[#1E293B] sm:text-3xl">
                     La méthode la plus fun pour maîtriser l’anglais ingénieur au quotidien !
                   </h1>
                   <p className="text-sm leading-6 text-[#64748B]">
@@ -223,20 +223,20 @@ export function StudioOnboarding({
 
               {/* 3 value pillars strip */}
               <div className="grid gap-4 border-t-2 border-[#E2E8F0] pt-8 sm:grid-cols-3">
-                <div className="rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/70 p-4">
-                  <p className="text-sm font-black text-[#059669]">ludique. rapide. concret.</p>
+                <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/70 p-4">
+                  <p className="text-sm font-bold text-[#059669]">ludique. rapide. concret.</p>
                   <p className="mt-1 text-xs leading-5 text-[#64748B]">
                     Banque de mots, écoute audio locale, paires chrono et textes à trous issus de 150 termes clés.
                   </p>
                 </div>
-                <div className="rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/70 p-4">
-                  <p className="text-sm font-black text-[#6366F1]">méthode scientifique</p>
+                <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/70 p-4">
+                  <p className="text-sm font-bold text-[#6366F1]">méthode scientifique</p>
                   <p className="mt-1 text-xs leading-5 text-[#64748B]">
                     Répétition espacée Leitner (1, 3, 7, 14, 30, 60 jours) + révision immédiate de tes erreurs.
                   </p>
                 </div>
-                <div className="rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/70 p-4">
-                  <p className="text-sm font-black text-[#F97316]">motivation au top</p>
+                <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/70 p-4">
+                  <p className="text-sm font-bold text-[#F97316]">motivation au top</p>
                   <p className="mt-1 text-xs leading-5 text-[#64748B]">
                     Séries quotidiennes, XP, combos, cœurs et quêtes reliées à ta vraie pratique orale.
                   </p>
@@ -256,7 +256,7 @@ export function StudioOnboarding({
             >
               <div className="flex items-center gap-4">
                 <VoltMascot mood="happy" size={76} />
-                <div className="relative rounded-2xl border-2 border-[#E2E8F0] bg-white px-4 py-3 text-sm font-bold text-[#1E293B]">
+                <div className="relative rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm font-bold text-[#1E293B]">
                   Quel domaine d&apos;anglais veux-tu prioriser dans ton parcours ?
                 </div>
               </div>
@@ -273,17 +273,17 @@ export function StudioOnboarding({
                         playTapSound(soundEnabled);
                         setFocusTrack(track.id);
                       }}
-                      className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all ${
+                      className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
                         selected
-                          ? "border-[#6366F1] bg-[#E0E7FF]/60 shadow-[0_4px_0_#6366F1]"
-                          : "border-[#E2E8F0] bg-white shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                          ? "border-[#6366F1] bg-[#E0E7FF]/60"
+                          : "border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
                       }`}
                     >
                       <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${track.accent}`}>
                         <Icon className="h-5 w-5" />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-sm font-extrabold text-[#1E293B]">{track.label}</p>
+                        <p className="text-sm font-semibold text-[#1E293B]">{track.label}</p>
                         <p className="text-[11px] font-bold uppercase tracking-wide text-[#64748B]">{track.tag}</p>
                         <p className="mt-1 text-xs leading-4 text-[#64748B]">{track.description}</p>
                       </div>
@@ -322,7 +322,7 @@ export function StudioOnboarding({
             >
               <div className="flex items-center gap-4">
                 <VoltMascot mood="celebrating" size={76} />
-                <div className="rounded-2xl border-2 border-[#E2E8F0] bg-white px-4 py-3 text-sm font-bold text-[#1E293B]">
+                <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm font-bold text-[#1E293B]">
                   Super choix ! Quel objectif quotidien veux-tu tenir ?
                 </div>
               </div>
@@ -338,21 +338,21 @@ export function StudioOnboarding({
                         playTapSound(soundEnabled);
                         setDailyGoalXp(goal.xp);
                       }}
-                      className={`flex w-full cursor-pointer items-center justify-between rounded-2xl border-2 px-5 py-4 text-left transition-all ${
+                      className={`flex w-full cursor-pointer items-center justify-between rounded-2xl border px-5 py-4 text-left transition-all ${
                         selected
-                          ? "border-[#059669] bg-[#D1FAE5]/50 shadow-[0_4px_0_#047857]"
-                          : "border-[#E2E8F0] bg-white shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                          ? "border-[#059669] bg-[#D1FAE5]/50"
+                          : "border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <Flame className={`h-5 w-5 ${selected ? "text-[#F97316]" : "text-[#94A3B8]"}`} />
                         <div>
-                          <p className="text-base font-extrabold text-[#1E293B]">{goal.label}</p>
+                          <p className="text-base font-semibold text-[#1E293B]">{goal.label}</p>
                           <p className="text-xs font-semibold text-[#64748B]">{goal.minutes}</p>
                         </div>
                       </div>
                       <span
-                        className={`rounded-xl px-3 py-1 text-xs font-extrabold ${
+                        className={`rounded-xl px-3 py-1 text-xs font-semibold ${
                           selected ? "bg-[#059669] text-white" : "bg-[#F8FAFC] text-[#64748B]"
                         }`}
                       >

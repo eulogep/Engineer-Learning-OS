@@ -370,7 +370,7 @@ export function InteractiveLessonRunner({
   // Victory screen
   if (reward) {
     return (
-      <div className="elos-studio relative overflow-hidden rounded-3xl border-2 border-[#E2E8F0] bg-white px-6 py-10 text-center shadow-sm sm:px-10">
+      <div className="elos-studio relative overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white px-6 py-10 text-center shadow-sm sm:px-10">
         <ConfettiBurst />
         <motion.div
           initial={{ scale: 0.85, opacity: 0 }}
@@ -380,39 +380,39 @@ export function InteractiveLessonRunner({
         >
           <VoltMascot mood="celebrating" size={136} accessory={equippedAccessory} />
           <div className="space-y-1">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#047857]">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#047857]">
               Leçon terminée !
             </p>
-            <h2 className="text-2xl font-black text-[#1E293B] sm:text-3xl">
+            <h2 className="text-2xl font-bold text-[#1E293B] sm:text-3xl">
               {reward.accuracy === 100 ? "Sans faute légendaire !" : "Super progression !"}
             </h2>
             <p className="text-sm font-semibold text-[#64748B]">{node.title}</p>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-2xl border-2 border-[#FBBF24] bg-[#FFEDD5]/60 p-3">
-              <p className="text-[11px] font-black uppercase text-[#C2410C]">Total XP</p>
-              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-black text-[#C2410C]">
+            <div className="rounded-2xl border border-[#FBBF24] bg-[#FFEDD5]/60 p-3">
+              <p className="text-[11px] font-bold uppercase text-[#C2410C]">Total XP</p>
+              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-bold text-[#C2410C]">
                 <Zap className="h-5 w-5 fill-[#FBBF24] text-[#D97706]" />+{reward.xpEarned}
               </p>
             </div>
-            <div className="rounded-2xl border-2 border-[#059669] bg-[#D1FAE5]/50 p-3">
-              <p className="text-[11px] font-black uppercase text-[#047857]">Précision</p>
-              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-black text-[#047857]">
+            <div className="rounded-2xl border border-[#059669] bg-[#D1FAE5]/50 p-3">
+              <p className="text-[11px] font-bold uppercase text-[#047857]">Précision</p>
+              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-bold text-[#047857]">
                 <Target className="h-5 w-5" />
                 {reward.accuracy}%
               </p>
             </div>
-            <div className="rounded-2xl border-2 border-[#6366F1] bg-[#E0E7FF]/60 p-3">
-              <p className="text-[11px] font-black uppercase text-[#4338CA]">Gemmes</p>
-              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-black text-[#4338CA]">
+            <div className="rounded-2xl border border-[#6366F1] bg-[#E0E7FF]/60 p-3">
+              <p className="text-[11px] font-bold uppercase text-[#4338CA]">Gemmes</p>
+              <p className="mt-1 flex items-center justify-center gap-1 text-xl font-bold text-[#4338CA]">
                 <Gem className="h-5 w-5 fill-[#6366F1]" />+{reward.gemsEarned}
               </p>
             </div>
           </div>
 
           {(reward.comboBonus > 0 || reward.perfectBonus > 0 || reward.boosted) && (
-            <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-extrabold">
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-semibold">
               {reward.boosted && (
                 <span className="rounded-xl bg-[#EEF2FF] px-3 py-1 text-[#4338CA]">
                   ⚡ Boost XP ×2 appliqué !
@@ -432,14 +432,14 @@ export function InteractiveLessonRunner({
           )}
 
           {reward.claimedQuests && reward.claimedQuests.length > 0 && (
-            <div className="space-y-2 rounded-2xl border-2 border-[#E0E7FF] bg-[#EEF2FF] p-3 text-left">
-              <p className="text-[11px] font-black uppercase tracking-wider text-[#4338CA]">
+            <div className="space-y-2 rounded-2xl border border-[#E0E7FF] bg-[#EEF2FF] p-3 text-left">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#4338CA]">
                 Quête{reward.claimedQuests.length > 1 ? "s" : ""} accomplie{reward.claimedQuests.length > 1 ? "s" : ""} !
               </p>
               {reward.claimedQuests.map((quest) => (
                 <p
                   key={quest.id}
-                  className="flex items-center justify-between gap-2 text-xs font-extrabold text-[#1E293B]"
+                  className="flex items-center justify-between gap-2 text-xs font-semibold text-[#1E293B]"
                 >
                   <span>{quest.title}</span>
                   <span className="flex shrink-0 items-center gap-1 text-[#4338CA]">
@@ -461,9 +461,9 @@ export function InteractiveLessonRunner({
   if (!current) return null;
 
   return (
-    <div className="elos-studio overflow-hidden rounded-3xl border-2 border-[#E2E8F0] bg-white shadow-sm">
+    <div className="elos-studio overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white shadow-sm">
       {/* Top Lesson HUD */}
-      <div className="flex items-center gap-3 border-b-2 border-[#E2E8F0] px-4 py-4 sm:gap-4 sm:px-6">
+      <div className="flex items-center gap-3 border-b border-[#E2E8F0] px-4 py-4 sm:gap-4 sm:px-6">
         <button
           type="button"
           onClick={() => {
@@ -478,7 +478,7 @@ export function InteractiveLessonRunner({
 
         <div className="flex-1 space-y-1">
           <GlossyProgressBar value={progressPct} combo={combo} />
-          <div className="flex items-center justify-between text-[11px] font-extrabold text-[#94A3B8]">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[#94A3B8]">
             <span>
               {isReviewRound ? "🔁 Révision de tes erreurs" : node.title}
             </span>
@@ -495,7 +495,7 @@ export function InteractiveLessonRunner({
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.5, opacity: 0 }}
-              className="hidden items-center gap-1 rounded-xl bg-[#FFEDD5] px-2.5 py-1 text-xs font-black text-[#C2410C] sm:flex"
+              className="hidden items-center gap-1 rounded-xl bg-[#FFEDD5] px-2.5 py-1 text-xs font-bold text-[#C2410C] sm:flex"
             >
               <Flame className="h-4 w-4 fill-[#F97316] text-[#F97316]" />
               {combo} d&apos;affilée
@@ -506,13 +506,13 @@ export function InteractiveLessonRunner({
         {/* Hearts indicator */}
         <div className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#FFF1F2] px-2.5 py-1.5">
           <Heart className="h-5 w-5 fill-[#F43F5E] text-[#F43F5E]" />
-          <span className="text-sm font-black text-[#E11D48]">{hearts}</span>
+          <span className="text-sm font-bold text-[#E11D48]">{hearts}</span>
         </div>
       </div>
 
       {/* Zero-hearts friendly recovery strip (never locks out local learner) */}
       {hearts === 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[#FFE4E6] bg-[#FFF1F2] px-5 py-2.5 text-xs font-bold text-[#E11D48]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#FFE4E6] bg-[#FFF1F2] px-5 py-2.5 text-xs font-bold text-[#E11D48]">
           <span>Plus de cœurs ! Tu peux continuer en mode entraînement ou recharger gratuitement.</span>
           <button
             type="button"
@@ -520,7 +520,7 @@ export function InteractiveLessonRunner({
               playTapSound(soundEnabled);
               onRefillHearts();
             }}
-            className="cursor-pointer rounded-lg bg-[#F43F5E] px-3 py-1 font-extrabold uppercase text-white hover:bg-[#E11D48]"
+            className="cursor-pointer rounded-lg bg-[#F43F5E] px-3 py-1 font-semibold text-white hover:bg-[#E11D48]"
           >
             Recharger {MAX_HEARTS} cœurs
           </button>
@@ -540,13 +540,13 @@ export function InteractiveLessonRunner({
           >
             {/* Review banner */}
             {isReviewRound && (
-              <div className="inline-flex items-center gap-2 rounded-xl bg-[#FFEDD5] px-3 py-1.5 text-xs font-black uppercase tracking-wider text-[#C2410C]">
+              <div className="inline-flex items-center gap-2 rounded-xl bg-[#FFEDD5] px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#C2410C]">
                 <RotateCcw className="h-3.5 w-3.5" />
                 Corrigeons cette erreur !
               </div>
             )}
 
-            <h2 className="text-xl font-black tracking-tight text-[#1E293B] sm:text-2xl">
+            <h2 className="text-xl font-bold tracking-tight text-[#1E293B] sm:text-2xl">
               {current.prompt}
             </h2>
 
@@ -555,17 +555,17 @@ export function InteractiveLessonRunner({
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <VoltMascot mood={mascotMood} size={76} accessory={equippedAccessory} />
-                  <div className="flex flex-1 flex-wrap items-center gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/60 px-4 py-3.5">
+                  <div className="flex flex-1 flex-wrap items-center gap-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/60 px-4 py-3.5">
                     <button
                       type="button"
                       onClick={() => speakEnglish(current.speakText)}
-                      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white shadow-[0_3px_0_#4338CA] active:translate-y-[2px] active:shadow-none"
+                      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white active:translate-y-[2px] active:shadow-none"
                       aria-label={`Écouter ${current.speakText}`}
                     >
                       <Volume2 className="h-5 w-5" />
                     </button>
                     <div>
-                      <p className="text-lg font-black text-[#1E293B]">{current.targetWord}</p>
+                      <p className="text-lg font-bold text-[#1E293B]">{current.targetWord}</p>
                       <p className="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">
                         {current.category}
                       </p>
@@ -589,14 +589,14 @@ export function InteractiveLessonRunner({
                             speakEnglish(choice);
                           }
                         }}
-                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-all ${
                           selected
-                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA] shadow-[0_4px_0_#6366F1]"
-                            : "border-[#E2E8F0] bg-white text-[#1E293B] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA]"
+                            : "border-[#E2E8F0] bg-white text-[#1E293B] hover:bg-[#F8FAFC]"
                         }`}
                       >
                         <span
-                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-xs font-black ${
+                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border text-xs font-bold ${
                             selected
                               ? "border-[#6366F1] bg-[#6366F1] text-white"
                               : "border-[#E2E8F0] text-[#94A3B8]"
@@ -604,7 +604,7 @@ export function InteractiveLessonRunner({
                         >
                           {idx + 1}
                         </span>
-                        <span className="text-sm font-extrabold">{choice}</span>
+                        <span className="text-sm font-semibold">{choice}</span>
                       </button>
                     );
                   })}
@@ -615,7 +615,7 @@ export function InteractiveLessonRunner({
             {/* 2. LISTENING CHOICE (Normal + Slow Turtle Speed) */}
             {current.kind === "listening_choice" && (
               <div className="space-y-6">
-                <div className="flex flex-col items-center gap-4 rounded-3xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/50 p-6">
+                <div className="flex flex-col items-center gap-4 rounded-3xl border border-[#E2E8F0] bg-[#F8FAFC]/50 p-6">
                   <div className="flex items-center gap-4">
                     <TactileButton
                       variant="info"
@@ -642,7 +642,7 @@ export function InteractiveLessonRunner({
                   <button
                     type="button"
                     onClick={() => setShowListeningHint((v) => !v)}
-                    className="cursor-pointer text-xs font-extrabold text-[#64748B] underline-offset-2 hover:text-[#6366F1] hover:underline"
+                    className="cursor-pointer text-xs font-semibold text-[#64748B] underline-offset-2 hover:text-[#6366F1] hover:underline"
                   >
                     {showListeningHint
                       ? `Indice : « ${current.translationHint} »`
@@ -663,14 +663,14 @@ export function InteractiveLessonRunner({
                           playTapSound(soundEnabled);
                           setSelectedChoice(choice);
                         }}
-                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-all ${
                           selected
-                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA] shadow-[0_4px_0_#6366F1]"
-                            : "border-[#E2E8F0] bg-white text-[#1E293B] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA]"
+                            : "border-[#E2E8F0] bg-white text-[#1E293B] hover:bg-[#F8FAFC]"
                         }`}
                       >
                         <span
-                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-xs font-black ${
+                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border text-xs font-bold ${
                             selected
                               ? "border-[#6366F1] bg-[#6366F1] text-white"
                               : "border-[#E2E8F0] text-[#94A3B8]"
@@ -678,7 +678,7 @@ export function InteractiveLessonRunner({
                         >
                           {idx + 1}
                         </span>
-                        <span className="text-base font-extrabold">{choice}</span>
+                        <span className="text-base font-semibold">{choice}</span>
                       </button>
                     );
                   })}
@@ -691,17 +691,17 @@ export function InteractiveLessonRunner({
               <div className="space-y-5">
                 <div className="flex items-center gap-4">
                   <VoltMascot mood={mascotMood} size={72} accessory={equippedAccessory} />
-                  <div className="flex flex-1 items-center justify-between gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/60 px-4 py-3">
+                  <div className="flex flex-1 items-center justify-between gap-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/60 px-4 py-3">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-wider text-[#6366F1]">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[#6366F1]">
                         Mot cible
                       </p>
-                      <p className="text-sm font-extrabold text-[#1E293B]">{current.cueFrench}</p>
+                      <p className="text-sm font-semibold text-[#1E293B]">{current.cueFrench}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => speakEnglish(current.speakText)}
-                      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white shadow-[0_3px_0_#4338CA] active:translate-y-[2px] active:shadow-none"
+                      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white active:translate-y-[2px] active:shadow-none"
                       aria-label="Écouter la phrase modèle"
                       title="Écouter la phrase"
                     >
@@ -711,7 +711,7 @@ export function InteractiveLessonRunner({
                 </div>
 
                 {/* Answer Tray */}
-                <div className="min-h-[84px] rounded-2xl border-2 border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-3.5">
+                <div className="min-h-[84px] rounded-2xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-3.5">
                   {selectedTokenIndices.length === 0 ? (
                     <p className="py-3 text-center text-xs font-bold text-[#94A3B8]">
                       Clique sur les mots ci-dessous dans le bon ordre…
@@ -730,7 +730,7 @@ export function InteractiveLessonRunner({
                             playTapSound(soundEnabled);
                             setSelectedTokenIndices((prev) => prev.filter((i) => i !== tokenIdx));
                           }}
-                          className="cursor-pointer rounded-xl border-2 border-[#6366F1] bg-[#E0E7FF] px-3.5 py-2 text-sm font-extrabold text-[#4338CA] shadow-[0_3px_0_#6366F1] active:translate-y-[2px] active:shadow-none"
+                          className="cursor-pointer rounded-xl border border-[#6366F1] bg-[#E0E7FF] px-3.5 py-2 text-sm font-semibold text-[#4338CA] active:translate-y-[2px] active:shadow-none"
                         >
                           {current.bankTokens[tokenIdx]}
                         </motion.button>
@@ -752,10 +752,10 @@ export function InteractiveLessonRunner({
                           playTapSound(soundEnabled);
                           setSelectedTokenIndices((prev) => [...prev, tokenIdx]);
                         }}
-                        className={`rounded-xl border-2 px-3.5 py-2 text-sm font-extrabold transition-all ${
+                        className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition-all ${
                           used
                             ? "cursor-default border-[#E2E8F0] bg-[#E2E8F0] text-transparent shadow-none"
-                            : "cursor-pointer border-[#E2E8F0] bg-white text-[#1E293B] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC] active:translate-y-[2px] active:shadow-none"
+                            : "cursor-pointer border-[#E2E8F0] bg-white text-[#1E293B] hover:bg-[#F8FAFC] active:translate-y-[2px] active:shadow-none"
                         }`}
                       >
                         {token}
@@ -769,12 +769,12 @@ export function InteractiveLessonRunner({
             {/* 4. FILL IN THE BLANK */}
             {current.kind === "fill_blank" && (
               <div className="space-y-6">
-                <div className="rounded-3xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/50 p-5">
+                <div className="rounded-3xl border border-[#E2E8F0] bg-[#F8FAFC]/50 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-lg font-bold leading-relaxed text-[#1E293B]">
                       {current.sentenceBefore}
                       <span
-                        className={`mx-1 inline-block min-w-[96px] rounded-xl border-b-4 px-3 py-0.5 text-center font-black ${
+                        className={`mx-1 inline-block min-w-[96px] rounded-xl border-b-4 px-3 py-0.5 text-center font-bold ${
                           selectedChoice
                             ? "border-[#4338CA] bg-[#E0E7FF] text-[#4338CA]"
                             : "border-[#CBD5E1] bg-white text-[#94A3B8]"
@@ -787,13 +787,13 @@ export function InteractiveLessonRunner({
                     <button
                       type="button"
                       onClick={() => speakEnglish(current.speakText)}
-                      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white shadow-[0_3px_0_#4338CA]"
+                      className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white"
                       aria-label="Écouter la phrase complète"
                     >
                       <Volume2 className="h-5 w-5" />
                     </button>
                   </div>
-                  <p className="mt-3 text-xs font-extrabold text-[#64748B]">
+                  <p className="mt-3 text-xs font-semibold text-[#64748B]">
                     Sens recherché : <span className="text-[#4338CA]">{current.translationHint}</span>
                   </p>
                 </div>
@@ -811,14 +811,14 @@ export function InteractiveLessonRunner({
                           playTapSound(soundEnabled);
                           setSelectedChoice(choice);
                         }}
-                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-all ${
                           selected
-                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA] shadow-[0_4px_0_#6366F1]"
-                            : "border-[#E2E8F0] bg-white text-[#1E293B] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA]"
+                            : "border-[#E2E8F0] bg-white text-[#1E293B] hover:bg-[#F8FAFC]"
                         }`}
                       >
                         <span
-                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-xs font-black ${
+                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border text-xs font-bold ${
                             selected
                               ? "border-[#6366F1] bg-[#6366F1] text-white"
                               : "border-[#E2E8F0] text-[#94A3B8]"
@@ -826,7 +826,7 @@ export function InteractiveLessonRunner({
                         >
                           {idx + 1}
                         </span>
-                        <span className="text-base font-extrabold">{choice}</span>
+                        <span className="text-base font-semibold">{choice}</span>
                       </button>
                     );
                   })}
@@ -838,7 +838,7 @@ export function InteractiveLessonRunner({
             {current.kind === "match_pairs" && (
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2.5">
-                  <p className="text-center text-xs font-black uppercase tracking-wider text-[#94A3B8]">
+                  <p className="text-center text-xs font-bold uppercase tracking-wider text-[#94A3B8]">
                     Anglais
                   </p>
                   {current.pairs.map((pair) => {
@@ -858,14 +858,14 @@ export function InteractiveLessonRunner({
                           setPickedEnglish(pair.english);
                           tryMatchPair(current, pair.english, pickedFrench);
                         }}
-                        className={`w-full rounded-2xl border-2 px-3.5 py-3.5 text-center text-sm font-extrabold transition-all ${
+                        className={`w-full rounded-2xl border px-3.5 py-3.5 text-center text-sm font-semibold transition-all ${
                           matched
                             ? "cursor-default border-[#D1FAE5] bg-[#D1FAE5]/40 text-[#047857]/60 shadow-none"
                             : wrong
                               ? "border-[#F43F5E] bg-[#FFE4E6] text-[#E11D48]"
                               : picked
-                                ? "cursor-pointer border-[#6366F1] bg-[#E0E7FF] text-[#4338CA] shadow-[0_3px_0_#6366F1]"
-                                : "cursor-pointer border-[#E2E8F0] bg-white text-[#1E293B] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                                ? "cursor-pointer border-[#6366F1] bg-[#E0E7FF] text-[#4338CA]"
+                                : "cursor-pointer border-[#E2E8F0] bg-white text-[#1E293B] hover:bg-[#F8FAFC]"
                         }`}
                       >
                         {pair.english}
@@ -875,7 +875,7 @@ export function InteractiveLessonRunner({
                 </div>
 
                 <div className="space-y-2.5">
-                  <p className="text-center text-xs font-black uppercase tracking-wider text-[#94A3B8]">
+                  <p className="text-center text-xs font-bold uppercase tracking-wider text-[#94A3B8]">
                     Français
                   </p>
                   {current.shuffledFrench.map((french) => {
@@ -895,14 +895,14 @@ export function InteractiveLessonRunner({
                           setPickedFrench(french);
                           tryMatchPair(current, pickedEnglish, french);
                         }}
-                        className={`w-full rounded-2xl border-2 px-3.5 py-3.5 text-center text-sm font-extrabold transition-all ${
+                        className={`w-full rounded-2xl border px-3.5 py-3.5 text-center text-sm font-semibold transition-all ${
                           matched
                             ? "cursor-default border-[#D1FAE5] bg-[#D1FAE5]/40 text-[#047857]/60 shadow-none"
                             : wrong
                               ? "border-[#F43F5E] bg-[#FFE4E6] text-[#E11D48]"
                               : picked
-                                ? "cursor-pointer border-[#6366F1] bg-[#E0E7FF] text-[#4338CA] shadow-[0_3px_0_#6366F1]"
-                                : "cursor-pointer border-[#E2E8F0] bg-white text-[#1E293B] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                                ? "cursor-pointer border-[#6366F1] bg-[#E0E7FF] text-[#4338CA]"
+                                : "cursor-pointer border-[#E2E8F0] bg-white text-[#1E293B] hover:bg-[#F8FAFC]"
                         }`}
                       >
                         {french}
@@ -917,18 +917,18 @@ export function InteractiveLessonRunner({
               <div className="space-y-5">
                 <div className="flex items-center gap-4">
                   <VoltMascot mood={mascotMood} size={76} accessory={equippedAccessory} />
-                  <div className="flex flex-1 flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC]/70 px-4 py-3.5">
+                  <div className="flex flex-1 flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]/70 px-4 py-3.5">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-wider text-[#6366F1]">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[#6366F1]">
                         Français · {current.category}
                       </p>
-                      <p className="text-lg font-black text-[#1E293B]">{current.cueFrench}</p>
+                      <p className="text-lg font-bold text-[#1E293B]">{current.cueFrench}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => speakEnglish(current.speakText)}
-                        className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white shadow-[0_3px_0_#4338CA] active:translate-y-[2px] active:shadow-none"
+                        className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl bg-[#6366F1] text-white active:translate-y-[2px] active:shadow-none"
                         aria-label="Écouter le mot"
                         title="Écouter le mot"
                       >
@@ -937,7 +937,7 @@ export function InteractiveLessonRunner({
                       <button
                         type="button"
                         onClick={() => speakEnglish(current.speakText, { slow: true })}
-                        className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl border-2 border-[#E2E8F0] bg-white text-[#475569] shadow-[0_3px_0_#E2E8F0] active:translate-y-[2px] active:shadow-none"
+                        className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl border border-[#E2E8F0] bg-white text-[#475569] active:translate-y-[2px] active:shadow-none"
                         aria-label="Écouter au ralenti"
                         title="Écouter lentement"
                       >
@@ -961,13 +961,13 @@ export function InteractiveLessonRunner({
                     placeholder="Tape le terme anglais exact…"
                     autoComplete="off"
                     spellCheck={false}
-                    className="h-14 w-full rounded-2xl border-2 border-[#CBD5E1] bg-white px-4 text-lg font-extrabold text-[#1E293B] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#6366F1] focus:ring-2 focus:ring-[#E0E7FF] disabled:bg-[#F8FAFC]"
+                    className="h-14 w-full rounded-2xl border border-[#CBD5E1] bg-white px-4 text-lg font-semibold text-[#1E293B] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#6366F1] focus:ring-2 focus:ring-[#E0E7FF] disabled:bg-[#F8FAFC]"
                   />
                   <div className="flex items-center justify-between text-xs font-bold text-[#64748B]">
                     <button
                       type="button"
                       onClick={() => setShowTypeHint((v) => !v)}
-                      className="cursor-pointer font-extrabold text-[#6366F1] hover:underline"
+                      className="cursor-pointer font-semibold text-[#6366F1] hover:underline"
                     >
                       {showTypeHint ? `Indice : ${current.firstLetterHint}` : "Besoin d'un indice ?"}
                     </button>
@@ -980,14 +980,14 @@ export function InteractiveLessonRunner({
             {/* 7. SPOT ERROR (French-speaker trap drill) */}
             {current.kind === "spot_error" && (
               <div className="space-y-5">
-                <div className="rounded-3xl border-2 border-[#FECDD3] bg-[#FFF1F2]/70 p-5 space-y-2">
+                <div className="rounded-3xl border border-[#FECDD3] bg-[#FFF1F2]/70 p-5 space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-lg bg-[#FFE4E6] px-2.5 py-0.5 text-[11px] font-black uppercase text-[#E11D48]">
+                    <span className="rounded-lg bg-[#FFE4E6] px-2.5 py-0.5 text-[11px] font-bold uppercase text-[#E11D48]">
                       Piège · {current.trapCategory}
                     </span>
-                    <span className="text-xs font-extrabold text-[#9F1239]">{current.trapTitle}</span>
+                    <span className="text-xs font-semibold text-[#9F1239]">{current.trapTitle}</span>
                   </div>
-                  <p className="text-base font-black text-[#E11D48] line-through sm:text-lg">
+                  <p className="text-base font-bold text-[#E11D48] line-through sm:text-lg">
                     “{current.wrongSentence}”
                   </p>
                   <p className="text-xs font-bold text-[#9F1239]">
@@ -1009,14 +1009,14 @@ export function InteractiveLessonRunner({
                           setSelectedChoice(choice);
                           speakEnglish(choice);
                         }}
-                        className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+                        className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-all ${
                           selected
-                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA] shadow-[0_4px_0_#6366F1]"
-                            : "border-[#E2E8F0] bg-white text-[#1E293B] shadow-[0_3px_0_#E2E8F0] hover:bg-[#F8FAFC]"
+                            ? "border-[#6366F1] bg-[#E0E7FF]/70 text-[#4338CA]"
+                            : "border-[#E2E8F0] bg-white text-[#1E293B] hover:bg-[#F8FAFC]"
                         }`}
                       >
                         <span
-                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-xs font-black ${
+                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border text-xs font-bold ${
                             selected
                               ? "border-[#6366F1] bg-[#6366F1] text-white"
                               : "border-[#E2E8F0] text-[#94A3B8]"
@@ -1024,7 +1024,7 @@ export function InteractiveLessonRunner({
                         >
                           {idx + 1}
                         </span>
-                        <span className="text-sm font-extrabold sm:text-base">{choice}</span>
+                        <span className="text-sm font-semibold sm:text-base">{choice}</span>
                       </button>
                     );
                   })}
@@ -1077,7 +1077,7 @@ export function InteractiveLessonRunner({
                   <CheckCircle2 className="h-6 w-6" />
                 </span>
                 <div>
-                  <p className="text-lg font-black text-[#047857]">{feedback.message}</p>
+                  <p className="text-lg font-bold text-[#047857]">{feedback.message}</p>
                   {feedback.detail && (
                     <p className="text-xs font-bold text-[#065F46]">{feedback.detail}</p>
                   )}
@@ -1101,8 +1101,8 @@ export function InteractiveLessonRunner({
                   <XCircle className="h-6 w-6" />
                 </span>
                 <div>
-                  <p className="text-base font-black text-[#E11D48]">Bonne réponse :</p>
-                  <p className="text-sm font-extrabold text-[#9F1239]">{feedback.expected}</p>
+                  <p className="text-base font-bold text-[#E11D48]">Bonne réponse :</p>
+                  <p className="text-sm font-semibold text-[#9F1239]">{feedback.expected}</p>
                   {feedback.detail && (
                     <p className="mt-0.5 text-xs font-semibold text-[#881337]">{feedback.detail}</p>
                   )}

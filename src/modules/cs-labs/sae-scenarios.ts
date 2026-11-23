@@ -226,6 +226,8 @@ export type CsLabsProgress = Readonly<{
   sqlSolvedIds: readonly string[];
   drillSolvedIds: readonly string[];
   saeSolvedIds: readonly string[];
+  /** Skill id of the last workshop worked on, used to resume (validated by the skill map). */
+  lastSkillId: string | null;
 }>;
 
 export const DEFAULT_CS_LABS_PROGRESS: CsLabsProgress = Object.freeze({
@@ -238,6 +240,7 @@ export const DEFAULT_CS_LABS_PROGRESS: CsLabsProgress = Object.freeze({
   sqlSolvedIds: [],
   drillSolvedIds: [],
   saeSolvedIds: [],
+  lastSkillId: null,
 });
 
 function stringArray(value: unknown): string[] {
@@ -264,6 +267,8 @@ export function readCsLabsProgress(storage: KeyValueStorage | null): CsLabsProgr
       sqlSolvedIds: stringArray(raw.sqlSolvedIds),
       drillSolvedIds: stringArray(raw.drillSolvedIds),
       saeSolvedIds: stringArray(raw.saeSolvedIds),
+      lastSkillId:
+        typeof raw.lastSkillId === "string" && /^[a-z_-]{1,32}$/.test(raw.lastSkillId) ? raw.lastSkillId : null,
     };
   } catch {
     return DEFAULT_CS_LABS_PROGRESS;
